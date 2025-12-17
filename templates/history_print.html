@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>صورت ریز گردش حساب - {{ portfolio.name }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/jalaali-js/dist/jalaali.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800;900&display=swap');
+        
+        body { 
+            font-family: 'Vazirmatn', 'Yekan', 'B Yekan', 'Tahoma', sans-serif; 
+            background: #f3f4f6; /* رنگ پس‌زمینه در حالت نمایش */
+            color: #1e293b; 
+            -webkit-print-color-adjust: exact; 
+            print-color-adjust: exact;
+        }
+        
+        .tabular-nums { font-variant-numeric: tabular-nums; letter-spacing: 0.5px; }
+        
+        /* تنظیمات صفحه A4 */
+        @page { 
+            size: A4; 
+            margin: 5mm; /* حاشیه کم */
+        }
+        
+        @media print {
+            .no-print { display: none !important; }
+            body, html { 
+                background: white; 
+                margin: 0; 
+                padding: 0; 
+                height: auto; 
+                overflow: visible;
+            }
+            .print-container { 
+                box-shadow: none !important; 
+                border: none !important; 
+                width: 100% !important; 
+                max-width: none !important; 
+                padding: 0 !important; 
+                margin: 0 !important;
+                min-height: 0 !important; /* حذف ارتفاع اجباری در چاپ برای جلوگیری از صفحه سفید */
+            }
+            .spacer { display: none; } /* در چاپ نیازی به هل دادن فوتر نیست اگر جا نباشد */
+            
+            /* جلوگیری از شکستن جدول */
+            table { page-break-inside: auto; }
+            tr { page-break-inside: avoid; page-break-after: auto; }
+            
+            /* فوتر همیشه پایین صفحه آخر باشد */
+            .footer-section {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                background: white;
+            }
+            /* فضای خالی برای فوتر فیکس شده */
+            .content-wrapper { margin-bottom: 50px; }
+        }
+        
+        /* استایل جدول */
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 11px; }
+        th { background-color: #f1f5f9 !important; color: #334155; font-weight: 800; padding: 8px; border: 1px solid #cbd5e1; text-align: center; white-space: nowrap; }
+        td { padding: 6px 8px; border: 1px solid #e2e8f0; text-align: center; color: #334155; font-weight: 500; }
+        tr:nth-child(even) { background-color: #f8fafc; }
+        
+        .header-box { border-bottom: 2px solid #5E2BFF; padding-bottom: 10px; margin-bottom: 15px; }
+        .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; font-size: 11px; margin-bottom: 15px; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; }
+        .info-item span:first-child { color: #64748b; font-weight: 500; margin-left: 5px; }
+        .info-item span:last-child { color: #1e293b; font-weight: 800; }
+        
+        /* استایل بخش امضا (اصلاح ارتفاع) */
+        .signature-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-top: 30px;
+            page-break-inside: avoid; /* جلوگیری از شکستن امضا بین دو صفحه */
+        }
+        .sign-box {
+            border: 1px dashed #cbd5e1;
+            border-radius: 8px;
+            padding: 10px;
+            height: 90px; /* کاهش ارتفاع */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+<body class="p-8 flex justify-center">
+
+    <div class="w-full max-w-[210mm] bg-white p-10 shadow-lg print-container flex flex-col min-h-[290mm] relative content-wrapper">
+        
+        <div class="header-box flex justify-between items-end">
+            <div>
+                <h1 class="text-xl font-black text-slate-800 mb-1">صورت ریز گردش حساب</h1>
+                <p class="text-xs text-gray-500 font-medium">گزارش تفصیلی تراکنش‌های مالی و معاملاتی</p>
+            </div>
+            <div class="text-left">
+                <div class="text-xl font-black text-[#5E2BFF] tracking-widest" style="font-family: sans-serif; color: #5E2BFF !important;">KINko</div>
+                <div class="text-[9px] text-gray-400 mt-1 font-bold">سامانه مدیریت دارایی</div>
+            </div>
+        </div>
+
+        <div class="info-grid">
+            <div class="info-item"><span>نام مشتری:</span> <span>{{ portfolio.name }}</span></div>
+            <div class="info-item"><span>کد ملی:</span> <span class="tabular-nums">{{ portfolio.national_id or '---' }}</span></div>
+            <div class="info-item"><span>مدیر سبد:</span> <span>{{ portfolio.manager_name }}</span></div>
+            
+            <div class="info-item"><span>تاریخ گزارش:</span> <span class="tabular-nums dir-ltr text-right" id="reportDate">---</span></div>
+            <div class="info-item"><span>ساعت:</span> <span class="tabular-nums">{{ report_time | persian_num }}</span></div>
+            <div class="info-item"><span>تعداد رکورد:</span> <span class="tabular-nums">{{ transactions|length | persian_num }}</span></div>
+        </div>
+
+        <div class="flex-1">
+            <table class="w-full">
+                <thead>
+                    <tr>
+                        <th style="width: 5%">#</th>
+                        <th style="width: 8%">نوع</th>
+                        <th style="width: 12%">تاریخ</th>
+                        <th style="width: 25%">شرح / نماد</th>
+                        <th style="width: 15%">تعداد</th>
+                        <th style="width: 15%">قیمت (ریال)</th>
+                        <th style="width: 20%">مبلغ کل (ریال)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in transactions %}
+                    <tr>
+                        <td class="tabular-nums">{{ loop.index | persian_num }}</td>
+                        <td>
+                            {% if t.transaction_type == 'buy' %}<span style="color: #16a34a; font-weight: bold;">خرید</span>
+                            {% elif t.transaction_type == 'sell' %}<span style="color: #dc2626; font-weight: bold;">فروش</span>
+                            {% elif t.transaction_type == 'deposit' %}<span style="color: #2563eb; font-weight: bold;">واریز</span>
+                            {% elif t.transaction_type == 'withdraw' %}<span style="color: #ea580c; font-weight: bold;">برداشت</span>
+                            {% endif %}
+                        </td>
+                        <td class="tabular-nums dir-ltr font-bold text-gray-600">{{ t.date | jalali | persian_num }}</td>
+                        <td class="font-bold text-right text-gray-800" style="text-align: right; padding-right: 10px;">
+                            {% if t.transaction_type in ['buy', 'sell'] %}
+                                {{ t.symbol }}
+                            {% else %}
+                                <span style="color: #64748b;">وجه نقد (نقدینگی)</span>
+                            {% endif %}
+                        </td>
+                        <td class="tabular-nums font-bold text-gray-600">
+                            {% if t.transaction_type in ['buy', 'sell'] %}
+                                {{ t.quantity | currency | persian_num }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td class="tabular-nums font-bold text-gray-600">
+                            {% if t.transaction_type in ['buy', 'sell'] %}
+                                {{ t.price | currency | persian_num }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td class="tabular-nums font-black text-slate-800">
+                            {% if t.transaction_type in ['buy', 'sell'] %}
+                                {{ (t.price * t.quantity) | currency | persian_num }}
+                            {% else %}
+                                {{ t.price | currency | persian_num }}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="footer-section">
+            
+            <div class="signature-section">
+                <div class="sign-box">
+                    <span class="text-xs font-bold text-gray-700">تأییدیه معامله‌گر:</span>
+                    <span class="text-[10px] text-gray-400 text-center mt-auto">مهر و امضاء</span>
+                </div>
+                <div class="sign-box">
+                    <span class="text-xs font-bold text-gray-700">تأییدیه مدیر سبد / ناظر:</span>
+                    <span class="text-[10px] text-gray-400 text-center mt-auto">مهر و امضاء</span>
+                </div>
+            </div>
+
+            <div class="mt-4 pt-2 border-t border-gray-200 flex justify-between text-[9px] text-gray-400 font-bold">
+                <div>این گزارش به صورت سیستمی تولید شده و فاقد اعتبار قانونی (بدون مهر) می‌باشد.</div>
+                <div>KINko Portfolio Manager</div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="fixed bottom-6 left-6 no-print flex gap-3 z-50">
+        <button onclick="window.close()" 
+                style="background-color: #64748b; color: white;"
+                class="px-5 py-2.5 rounded-xl shadow-lg hover:opacity-90 transition text-sm font-bold">
+            بستن پنجره
+        </button>
+        
+        <button onclick="window.print()" 
+                style="background-color: #5E2BFF; color: white;"
+                class="px-6 py-2.5 rounded-xl shadow-lg hover:opacity-90 transition text-sm font-bold flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+            چاپ گزارش
+        </button>
+    </div>
+
+    <script>
+        const reportDate = "{{ report_date }}";
+        const [y, m, d] = reportDate.split('/').map(Number);
+        const jDate = jalaali.toJalaali(y, m, d);
+        
+        function toPersianNum(num) { return String(num).replace(/\d/g, d => "۰۱۲۳۴۵۶۷۸۹"[d]); }
+        
+        document.getElementById('reportDate').innerText = toPersianNum(`${jDate.jy}/${String(jDate.jm).padStart(2,'0')}/${String(jDate.jd).padStart(2,'0')}`);
+    </script>
+</body>
+</html>

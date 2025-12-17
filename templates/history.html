@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>تاریخچه تراکنش‌ها</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="bg-gray-50 p-6 md:p-10 text-gray-800">
+
+    <div class="max-w-6xl mx-auto">
+        
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-2xl font-bold flex items-center gap-2">
+                    📋 دفترچه سفارشات و تراکنش‌ها
+                </h1>
+                <p class="text-gray-500 mt-1">ریز گردش مالی سبد: <span class="font-bold">{{ portfolio.name }}</span></p>
+            </div>
+            <div class="flex gap-2">
+                <a href="/portfolio/{{ portfolio.id }}/add" class="bg-[#5E2BFF] text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition text-sm font-bold">
+                    + ثبت تراکنش جدید
+                </a>
+                <a href="/portfolio/{{ portfolio.id }}" class="bg-white border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-100 transition text-sm">
+                    بازگشت به سبد
+                </a>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            {% if transactions %}
+            <div class="overflow-x-auto">
+                <table class="w-full text-right text-sm">
+                    <thead class="bg-gray-50 text-gray-500 border-b">
+                        <tr>
+                            <th class="p-4 font-normal">نوع</th>
+                            <th class="p-4 font-normal">تاریخ</th>
+                            <th class="p-4 font-normal">نماد</th>
+                            <th class="p-4 font-normal">تعداد</th>
+                            <th class="p-4 font-normal">قیمت واحد</th>
+                            <th class="p-4 font-normal">مبلغ کل (ریال)</th>
+                            <th class="p-4 font-normal">کارمزد</th>
+                            <th class="p-4 font-normal text-center">عملیات</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for t in transactions %}
+                        <tr class="hover:bg-gray-50 transition group">
+                            
+                            <td class="p-4">
+                                {% if t.transaction_type == 'buy' %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                        خرید
+                                    </span>
+                                {% elif t.transaction_type == 'sell' %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                        فروش
+                                    </span>
+                                {% elif t.transaction_type == 'deposit' %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        واریز وجه
+                                    </span>
+                                {% elif t.transaction_type == 'withdraw' %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                        برداشت وجه
+                                    </span>
+                                {% endif %}
+                            </td>
+
+                            <td class="p-4 text-gray-500">{{ t.date | jalali | persian_num }}</td>
+                            
+                            <td class="p-4 font-bold text-gray-700">
+                                {% if t.symbol == 'CASH' or t.symbol == 'DPS' %}
+                                    <span class="text-gray-400">-</span>
+                                {% else %}
+                                    {{ t.symbol }}
+                                {% endif %}
+                            </td>
+
+                            <td class="p-4">
+                                {% if t.quantity > 1 %}
+                                    {{ t.quantity | currency }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+
+                            <td class="p-4 text-gray-600">
+                                {% if t.price > 1 %}
+                                    {{ t.price | currency }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+
+                            <td class="p-4 font-bold">
+                                {% if t.transaction_type in ['deposit', 'withdraw'] %}
+                                    {{ t.price | currency }}
+                                {% else %}
+                                    {{ (t.quantity * t.price) | currency }}
+                                {% endif %}
+                            </td>
+
+                            <td class="p-4 text-xs text-gray-400">
+                                {{ t.commission | int | currency }}
+                            </td>
+
+                            <td class="p-4 text-center">
+                                <a href="/transaction/delete/{{ t.id }}" 
+                                   onclick="return confirm('آیا از حذف این تراکنش مطمئن هستید؟ این عمل موجودی سبد را تغییر می‌دهد.');"
+                                   class="text-red-400 hover:text-red-600 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition" title="حذف تراکنش">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-12 text-gray-400">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                هنوز هیچ تراکنشی ثبت نشده است.
+            </div>
+            {% endif %}
+        </div>
+
+    </div>
+
+</body>
+</html>

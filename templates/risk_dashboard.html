@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>مدیریت ریسک</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>body { background-color: #fef2f2; }</style> </head>
+<body class="p-8">
+
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-600 ml-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                </svg>
+                مرکز کنترل ریسک
+            </h1>
+            <p class="text-gray-500 mt-1">مانیتورینگ هوشمند سبد: {{ data.info.name }}</p>
+        </div>
+        <a href="/portfolio/{{ data.info.id }}/stress_test" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition shadow-md shadow-red-200 flex items-center gap-2 ml-4">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" />
+    </svg>
+    اجرای تست استرس
+</a>
+        <a href="/portfolio/{{ data.info.id }}" class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition">
+            بازگشت به سبد
+        </a>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white p-6 rounded-xl shadow-sm border-r-4 {{ 'border-green-500' if data.alert_count == 0 else 'border-red-500' }}">
+            <div class="text-gray-500 text-sm">تعداد هشدارها</div>
+            <div class="text-3xl font-bold mt-2 {{ 'text-green-600' if data.alert_count == 0 else 'text-red-600' }}">
+                {{ data.alert_count | persian_num }}
+            </div>
+            <div class="text-xs text-gray-400 mt-1">مورد نیازمند توجه</div>
+        </div>
+        
+        <div class="bg-white p-6 rounded-xl shadow-sm border-r-4 border-blue-500">
+            <div class="text-gray-500 text-sm">حد ضرر سبد (Stop Loss)</div>
+            <div class="text-xl font-bold mt-2 text-gray-800">%۱۰-</div>
+            <div class="text-xs text-gray-400 mt-1">تنظیم شده در سیستم</div>
+        </div>
+
+       <div class="bg-white p-6 rounded-xl shadow-sm border-r-4 {{ 'border-red-500' if data.top_holding_weight > 25 else 'border-blue-500' }}">
+            <div class="text-gray-500 text-sm">
+                بیشترین تمرکز روی: <span class="font-bold text-gray-800">{{ data.top_holding_symbol }}</span>
+            </div>
+            
+            <div class="text-xl font-bold mt-2 {{ 'text-red-600' if data.top_holding_weight > 25 else 'text-blue-600' }}">
+                %{{ data.top_holding_weight | round(1) | persian_num }}
+            </div>
+            
+            <div class="text-xs text-gray-400 mt-1">
+                {% if data.top_holding_weight > 25 %}
+                    ⚠ بیشتر از حد مجاز (۲۵٪)
+                {% else %}
+                    ✅ در محدوده مجاز
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {% if data.alert_count > 0 %}
+        <div class="space-y-4">
+            {% for alert in data.alerts %}
+            <div class="rounded-xl p-4 flex items-start shadow-sm border
+                        {{ 'bg-red-50 border-red-200' if alert.level == 'critical' else 'bg-yellow-50 border-yellow-200' }}">
+                
+                <div class="ml-4 mt-1">
+                    {% if alert.level == 'critical' %}
+                        <span class="flex items-center justify-center h-8 w-8 rounded-full bg-red-100 text-red-600">
+                            ⚠
+                        </span>
+                    {% else %}
+                        <span class="flex items-center justify-center h-8 w-8 rounded-full bg-yellow-100 text-yellow-600">
+                            !
+                        </span>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <h3 class="font-bold {{ 'text-red-800' if alert.level == 'critical' else 'text-yellow-800' }}">
+                        {% if alert.type == 'stop_loss' %}
+                            شکست حد ضرر
+                        {% else %}
+                            ریسک تمرکز (عدم تنوع)
+                        {% endif %}
+                    </h3>
+                    <p class="text-sm mt-1 {{ 'text-red-600' if alert.level == 'critical' else 'text-yellow-700' }}">
+                        {{ alert.message }}
+                    </p>
+                    <div class="mt-2">
+                        <span class="text-xs font-bold px-2 py-1 rounded bg-white bg-opacity-50">
+                            نماد: {{ alert.symbol }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="bg-green-50 border border-green-200 rounded-xl p-8 text-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-green-500 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h3 class="text-xl font-bold text-green-800">وضعیت سفید</h3>
+            <p class="text-green-600 mt-2">هیچ ریسک فعالی در این سبد شناسایی نشد. ترکیب دارایی‌ها متوازن است.</p>
+        </div>
+    {% endif %}
+
+</body>
+</html>

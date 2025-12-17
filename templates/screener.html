@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+
+{% block title %}غربالگر هوشمند{% endblock %}
+
+{% block content %}
+
+<style>
+    /* دکمه‌های فیلتر */
+    .filter-btn { 
+        background: white; border: 1px solid #e2e8f0; padding: 0 14px; height: 40px; border-radius: 12px; 
+        font-size: 11px; font-weight: bold; color: #64748b; cursor: pointer; 
+        display: flex; align-items: center; gap: 6px; transition: all 0.2s; white-space: nowrap;
+    }
+    .filter-btn:hover { background: #f8fafc; border-color: #94a3b8; color: #475569; }
+    .filter-btn.active { background: #5E2BFF; color: white; border-color: #5E2BFF; }
+
+    /* کارت‌ها */
+    .screener-card { 
+        display: flex; flex-direction: column; justify-content: space-between; 
+        background: white; border: 1px solid #f1f5f9; border-radius: 16px; padding: 16px; 
+        transition: transform 0.2s; 
+    }
+    .screener-card:hover { transform: translateY(-3px); box-shadow: 0 10px 20px -5px rgba(0,0,0,0.05); }
+    
+    /* تگ‌های دارایی */
+    .asset-tag { font-size: 9px; padding: 2px 6px; border-radius: 6px; font-weight: bold; margin-left: 4px; }
+    .tag-Gold { background: #fefce8; color: #ca8a04; border: 1px solid #fef08a; }
+    .tag-Stock { background: #eff6ff; color: #2563eb; border: 1px solid #dbeafe; }
+    .tag-Fixed { background: #f0fdf4; color: #16a34a; border: 1px solid #dcfce7; }
+
+    /* منوی کشویی سفارشی */
+    .custom-select-container { position: relative; min-width: 150px; }
+    .select-trigger { 
+        width: 100%; height: 40px; display: flex; justify-content: space-between; align-items: center; 
+        padding: 0 12px; background-color: white; border: 1px solid #e2e8f0; 
+        border-radius: 12px; font-size: 11px; font-weight: bold; color: #64748b; cursor: pointer; transition: all 0.2s; 
+    }
+    .select-trigger:hover { border-color: #94a3b8; background: #f8fafc; }
+    .select-trigger.active { border-color: #5E2BFF; box-shadow: 0 0 0 2px rgba(94, 43, 255, 0.1); }
+    
+    .select-options { 
+        position: absolute; top: calc(100% + 6px); right: 0; width: 180px; 
+        background-color: white; border: 1px solid #e2e8f0; border-radius: 12px; 
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); overflow: hidden; z-index: 100; display: none; 
+    }
+    .select-options.show { display: block; animation: fadeIn 0.1s ease-out; }
+    .select-option { padding: 10px 14px; cursor: pointer; font-size: 11px; color: #4b5563; border-bottom: 1px solid #f8fafc; transition: all 0.1s; text-align: right; }
+    .select-option:last-child { border-bottom: none; }
+    .select-option:hover { background-color: #eff6ff; color: #5E2BFF; padding-right: 18px; }
+
+    /* اینپوت‌های بازه ارزش (Compact) */
+    .compact-input {
+        background: transparent; border: none; padding: 0 4px;
+        font-size: 11px; font-weight: bold; color: #334155; width: 80px; text-align: center;
+        outline: none;
+    }
+    .compact-input::placeholder { color: #cbd5e1; font-weight: normal; }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+
+<div class="mb-6 flex justify-between items-end">
+    <div>
+        <h1 class="text-2xl font-black text-gray-800 flex items-center gap-2">
+            <svg class="w-7 h-7 text-[#5E2BFF]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+            غربالگر هوشمند
+        </h1>
+        <p class="text-xs text-gray-500 mt-1 mr-9">فیلتر پیشرفته بر اساس دارایی و ارزش</p>
+    </div>
+    <div class="text-xs text-gray-400 font-bold px-1" id="resultsCount"></div>
+</div>
+
+<div class="bg-white p-2 rounded-2xl border border-gray-200 shadow-sm mb-8 sticky top-4 z-40">
+    <div class="flex flex-col xl:flex-row gap-2 items-center justify-between">
+        
+        <div class="flex flex-col md:flex-row gap-2 w-full xl:w-auto flex-grow">
+            
+            <div class="relative w-full md:w-64">
+                <svg class="w-4 h-4 absolute right-3 top-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                <input type="text" id="searchInput" oninput="applyFilters()" placeholder="جستجو (نام، مدیر، نماد)..." class="w-full h-10 bg-gray-50 border border-gray-200 rounded-xl pr-9 pl-4 text-xs focus:border-[#5E2BFF] outline-none transition font-bold focus:bg-white">
+            </div>
+
+            <div class="flex items-center bg-gray-50 border border-gray-200 rounded-xl px-2 h-10 w-full md:w-auto transition focus-within:border-[#5E2BFF] focus-within:bg-white">
+                <span class="text-[10px] text-gray-400 font-bold ml-2 whitespace-nowrap">ارزش سبد:</span>
+                <input type="text" id="minVal" class="compact-input money-input" placeholder="حداقل" oninput="applyFilters()">
+                <span class="text-gray-300 mx-1 text-[10px]">-</span>
+                <input type="text" id="maxVal" class="compact-input money-input" placeholder="حداکثر" oninput="applyFilters()">
+                <span class="text-[9px] text-gray-300 mr-1">ریال</span>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap gap-2 items-center justify-end w-full xl:w-auto">
+            <button id="btnCash" onclick="toggleBtn('cash')" class="filter-btn">
+                <span class="w-2 h-2 rounded-full bg-emerald-400"></span> نقدینگی
+            </button>
+            <button id="btnLoss" onclick="toggleBtn('loss')" class="filter-btn hover:text-red-500 hover:border-red-200">
+                <span class="w-2 h-2 rounded-full bg-red-400"></span> زیان‌ده
+            </button>
+            
+            <div class="custom-select-container" id="assetSelectContainer">
+                <button type="button" class="select-trigger" onclick="toggleCustomSelect()">
+                    <span id="assetFilterDisplay">همه دارایی‌ها</span>
+                    <svg class="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div class="select-options">
+                    <div class="select-option" onclick="setAssetFilter('all', 'همه دارایی‌ها')">همه دارایی‌ها</div>
+                    <div class="select-option" onclick="setAssetFilter('has_stock', '✅ دارای سهام')">✅ دارای سهام</div>
+                    <div class="select-option" onclick="setAssetFilter('has_gold', '✅ دارای طلا')">✅ دارای طلا</div>
+                    <div class="select-option" onclick="setAssetFilter('no_stock', '❌ فاقد سهام')">❌ فاقد سهام</div>
+                    <div class="select-option" onclick="setAssetFilter('no_gold', '❌ فاقد طلا')">❌ فاقد طلا</div>
+                </div>
+                <input type="hidden" id="assetFilter" value="all">
+            </div>
+
+            <button onclick="resetAllFilters()" class="w-8 h-10 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition border border-transparent hover:border-red-100" title="پاکسازی فیلترها">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="resultsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    {% for p in portfolios %}
+    <div class="screener-card portfolio-item" 
+         data-name="{{ p.name | default('') }}" 
+         data-manager="{{ p.manager | default('') }}" 
+         data-symbols="{{ p.symbols | default('') }}"
+         data-cash="{{ p.cash | default(0) }}"
+         data-pnl="{{ p.pnl | default(0) }}"
+         data-total-value="{{ p.total_value | default(0) }}"
+         data-assets="{{ p.assets | join(',') | default('') }}">
+        
+        <div class="flex justify-between items-start mb-4">
+            <div>
+                <h4 class="font-bold text-gray-800 text-sm">{{ p.name }}</h4>
+                <span class="text-[10px] text-gray-400">{{ p.manager }}</span>
+            </div>
+            <span class="text-[10px] font-black dir-ltr px-2 py-1 rounded-lg {{ 'bg-green-50 text-green-600' if p.pnl >= 0 else 'bg-red-50 text-red-500' }}">
+                {{ '+' if p.pnl > 0 else '' }}{{ p.pnl_percent | default(0) | round(1) | persian_num }}%
+            </span>
+        </div>
+
+        <div class="space-y-2 mb-4">
+            <div class="flex justify-between text-[10px]">
+                <span class="text-gray-400">ارزش کل</span>
+                <span class="font-bold text-gray-700">{{ p.total_value | default(0) | currency | persian_num }}</span>
+            </div>
+            <div class="flex justify-between text-[10px]">
+                <span class="text-gray-400">نقدینگی</span>
+                <span class="font-bold {{ 'text-blue-600' if p.cash > 500000 else 'text-gray-300' }}">
+                    {{ p.cash | default(0) | currency | persian_num }}
+                </span>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap gap-1 border-t border-gray-50 pt-3 h-8 overflow-hidden">
+            {% for asset in p.assets %}
+                {% if 'Gold' in asset or 'طلا' in asset %}
+                    <span class="asset-tag tag-Gold">طلا</span>
+                {% elif 'Stock' in asset or 'سهام' in asset %}
+                    <span class="asset-tag tag-Stock">سهام</span>
+                {% elif 'Fixed' in asset or 'ثابت' in asset %}
+                    <span class="asset-tag tag-Fixed">ثابت</span>
+                {% else %}
+                    <span class="asset-tag bg-gray-100 text-gray-500 border border-gray-200">{{ asset }}</span>
+                {% endif %}
+            {% else %}
+                <span class="text-[9px] text-gray-300 italic">فقط نقد</span>
+            {% endfor %}
+        </div>
+        
+        <a href="/portfolio/{{ p.id }}" class="mt-4 w-full text-center py-2 rounded-xl bg-gray-50 text-gray-500 text-[10px] font-bold hover:bg-[#5E2BFF] hover:text-white transition">مشاهده</a>
+    </div>
+    {% else %}
+    <div class="col-span-full text-center py-10 text-gray-400">
+        هیچ سبدی یافت نشد.
+    </div>
+    {% endfor %}
+</div>
+
+<div id="noResults" class="hidden text-center py-12 text-gray-400 font-bold text-sm">
+    با فیلترهای فعلی نتیجه‌ای یافت نشد.
+</div>
+
+<script>
+    let activeFilters = { cash: false, loss: false };
+
+    // نرمال‌سازی
+    function normalize(str) {
+        if (!str) return "";
+        return str.toString().replace(/ي/g, "ی").replace(/ك/g, "ک").toLowerCase().trim();
+    }
+
+    // تمیز کردن عدد (حذف کاما)
+    function cleanNumber(val) {
+        if (!val) return 0;
+        let str = val.toString().replace(/,/g, '').replace(/[۰-۹]/g, d => "۰۱۲۳۴۵۶۷۸۹".indexOf(d));
+        return parseFloat(str) || 0;
+    }
+
+    // فرمت 3 رقمی
+    document.addEventListener('input', function (e) {
+        if (e.target.classList.contains('money-input')) {
+            let val = e.target.value.replace(/[۰-۹]/g, d => "۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/[^0-9]/g, '');
+            if (val === "") { e.target.value = ""; return; }
+            e.target.value = parseInt(val).toLocaleString('en-US');
+        }
+    });
+
+    // --- Custom Select ---
+    function toggleCustomSelect() {
+        const container = document.getElementById('assetSelectContainer');
+        const list = container.querySelector('.select-options');
+        const trigger = container.querySelector('.select-trigger');
+        list.classList.toggle('show'); trigger.classList.toggle('active');
+    }
+
+    function setAssetFilter(value, text) {
+        document.getElementById('assetFilter').value = value;
+        document.getElementById('assetFilterDisplay').innerText = text;
+        const container = document.getElementById('assetSelectContainer');
+        container.querySelector('.select-options').classList.remove('show');
+        container.querySelector('.select-trigger').classList.remove('active');
+        applyFilters();
+    }
+
+    document.addEventListener('click', function(e) {
+        const container = document.getElementById('assetSelectContainer');
+        if (container && !container.contains(e.target)) {
+            container.querySelector('.select-options').classList.remove('show');
+            container.querySelector('.select-trigger').classList.remove('active');
+        }
+    });
+
+    // --- Logic ---
+    function toggleBtn(type) {
+        activeFilters[type] = !activeFilters[type];
+        const btn = document.getElementById(type === 'cash' ? 'btnCash' : 'btnLoss');
+        if (activeFilters[type]) btn.classList.add('active'); else btn.classList.remove('active');
+        applyFilters();
+    }
+
+    function resetAllFilters() {
+        activeFilters = { cash: false, loss: false };
+        document.getElementById('searchInput').value = '';
+        document.getElementById('minVal').value = '';
+        document.getElementById('maxVal').value = '';
+        setAssetFilter('all', 'همه دارایی‌ها');
+        document.getElementById('btnCash').classList.remove('active');
+        document.getElementById('btnLoss').classList.remove('active');
+        applyFilters();
+    }
+
+    function applyFilters() {
+        const rawQuery = document.getElementById('searchInput').value;
+        const query = normalize(rawQuery);
+        const assetMode = document.getElementById('assetFilter').value;
+        const minVal = cleanNumber(document.getElementById('minVal').value);
+        const maxVal = cleanNumber(document.getElementById('maxVal').value);
+        
+        const cards = document.querySelectorAll('.portfolio-item');
+        let visibleCount = 0;
+
+        cards.forEach(card => {
+            const name = normalize(card.getAttribute('data-name'));
+            const manager = normalize(card.getAttribute('data-manager'));
+            const symbols = normalize(card.getAttribute('data-symbols'));
+            const cash = parseFloat(card.getAttribute('data-cash')) || 0;
+            const pnl = parseFloat(card.getAttribute('data-pnl')) || 0;
+            const totalVal = parseFloat(card.getAttribute('data-total-value')) || 0;
+            const assetsStr = card.getAttribute('data-assets') || "";
+
+            let matchesSearch = true;
+            if (query.length > 0) matchesSearch = name.includes(query) || manager.includes(query) || symbols.includes(query);
+
+            const matchesCash = !activeFilters.cash || (cash > 500000);
+            const matchesLoss = !activeFilters.loss || (pnl < 0);
+
+            // فیلتر ارزش (Logic)
+            let matchesValue = true;
+            if (minVal > 0 && totalVal < minVal) matchesValue = false;
+            if (maxVal > 0 && totalVal > maxVal) matchesValue = false;
+
+            let matchesAsset = true;
+            if (assetMode === 'has_gold') matchesAsset = assetsStr.includes('Gold') || assetsStr.includes('طلا');
+            if (assetMode === 'has_stock') matchesAsset = assetsStr.includes('Stock') || assetsStr.includes('سهام');
+            if (assetMode === 'no_gold') matchesAsset = !assetsStr.includes('Gold') && !assetsStr.includes('طلا');
+            if (assetMode === 'no_stock') matchesAsset = !assetsStr.includes('Stock') && !assetsStr.includes('سهام');
+
+            if (matchesSearch && matchesCash && matchesLoss && matchesAsset && matchesValue) {
+                card.style.display = "flex";
+                visibleCount++;
+            } else {
+                card.style.display = "none";
+            }
+        });
+
+        const noRes = document.getElementById('noResults');
+        const countDiv = document.getElementById('resultsCount');
+        
+        if (visibleCount === 0) {
+            noRes.classList.remove('hidden');
+            countDiv.innerText = "";
+        } else {
+            noRes.classList.add('hidden');
+            countDiv.innerText = `${visibleCount} سبد پیدا شد`;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', applyFilters);
+</script>
+
+{% endblock %}

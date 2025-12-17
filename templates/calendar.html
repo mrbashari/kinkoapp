@@ -1,0 +1,449 @@
+{% extends "base.html" %}
+
+{% block title %}تقویم و یادداشت‌ها{% endblock %}
+
+{% block content %}
+
+    <style>
+        /* استایل‌های عمومی */
+        .validation-tooltip { position: absolute; bottom: 100%; right: 0; background-color: #1e293b; color: white; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: bold; white-space: nowrap; opacity: 0; transform: translateY(5px); transition: all 0.2s ease; pointer-events: none; z-index: 50; }
+        .validation-tooltip::after { content: ''; position: absolute; top: 100%; right: 10px; border-width: 4px; border-style: solid; border-color: #1e293b transparent transparent transparent; }
+        .input-error { border-color: #ef4444 !important; background-color: #fef2f2 !important; }
+        .input-group:hover .validation-tooltip.show { opacity: 1; transform: translateY(-3px); }
+        .validation-tooltip.show { opacity: 1; transform: translateY(-3px); }
+
+        /* تایم‌لاین */
+        .timeline-line { position: absolute; top: 0; bottom: 0; right: 28px; width: 2px; background-color: #e2e8f0; z-index: 0; }
+        .timeline-item { position: relative; padding-right: 60px; margin-bottom: 20px; }
+        .timeline-dot { position: absolute; right: 23px; top: 50%; transform: translateY(-50%); width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 0 2px #e2e8f0; z-index: 10; background: white; transition: all 0.2s; }
+        .timeline-item:hover .timeline-dot { transform: translateY(-50%) scale(1.3); }
+
+        /* رنگ‌بندی نقاط تایم‌لاین */
+        .bg-emerald-500 { background-color: #10b981; }
+        .shadow-emerald-100 { box-shadow: 0 0 0 3px #d1fae5; }
+        .bg-amber-500 { background-color: #f59e0b; }
+        .shadow-amber-100 { box-shadow: 0 0 0 3px #fef3c7; }
+        .bg-blue-500 { background-color: #3b82f6; }
+        .shadow-blue-100 { box-shadow: 0 0 0 3px #dbeafe; }
+
+        /* منوی کشویی */
+        .custom-select-container { position: relative; width: 100%; }
+        .select-trigger { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 12px; background-color: #f9fafb; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-size: 0.875rem; color: #374151; cursor: pointer; transition: all 0.2s; }
+        .select-trigger:focus { border-color: #5E2BFF; background-color: white; box-shadow: 0 0 0 1px #5E2BFF; }
+        .select-options { position: absolute; top: calc(100% + 6px); right: 0; width: 100%; background-color: white; border: 1px solid #e2e8f0; border-radius: 0.75rem; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); overflow-y: auto; max-height: 200px; z-index: 60; display: none; }
+        .select-options.open { display: block; }
+        .select-option { padding: 12px 14px; cursor: pointer; font-size: 0.8rem; color: #4b5563; border-bottom: 1px solid #f8fafc; transition: all 0.1s; }
+        .select-option:hover { background-color: #eff6ff; color: #5E2BFF; padding-right: 18px; }
+        .select-option.selected { background-color: #f1f5f9; color: #1e293b; font-weight: bold; }
+        
+        /* استایل‌های Autocomplete (اضافه شده) */
+        .suggestions-list { position: absolute; top: 100%; right: 0; width: 100%; background: white; border: 1px solid #e2e8f0; border-radius: 0.75rem; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15); max-height: 160px; overflow-y: auto; z-index: 1000; display: none; }
+        .suggestions-list.show { display: block; }
+        .suggestion-item { padding: 10px 14px; cursor: pointer; font-size: 11px; border-bottom: 1px solid #f8fafc; transition: background 0.1s; text-align: right; }
+        .suggestion-item:hover { background-color: #f1f5f9; color: #5E2BFF; }
+
+        /* کارت یادداشت */
+        .note-card { background: #fffbeb; border: 1px solid #fef3c7; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .note-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); border-color: #fcd34d; }
+    </style>
+
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-2xl font-black text-gray-800">تقویم و یادداشت‌ها</h1>
+            <p class="text-xs text-gray-500 mt-1">مدیریت رویدادهای مالی و یادداشت‌های شخصی سبد {{ portfolio.name }}</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <a href="/portfolio/{{ portfolio.id }}" class="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-[#5E2BFF] hover:border-[#5E2BFF] transition shadow-sm" title="بازگشت به جزئیات">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                </svg>
+            </a>
+            <button onclick="openEventModal()" class="bg-[#5E2BFF] text-white px-5 py-3 rounded-xl font-bold shadow-md hover:bg-indigo-700 transition flex items-center gap-2 text-sm">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                ثبت رویداد
+            </button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-2xl border border-gray-200 p-6 min-h-[400px]">
+                <h3 class="font-bold text-gray-700 mb-8 flex items-center gap-2">
+                    <span class="w-2 h-6 bg-[#5E2BFF] rounded-full"></span>
+                    مسیر زمانی رویدادها
+                </h3>
+                
+                <div class="relative pb-4">
+                    <div class="timeline-line"></div>
+                    
+                    {% set ns = namespace(has_event=false) %}
+                    
+                    {% for event in events if event.event_type != 'note' %}
+                    {% set ns.has_event = true %}
+                    <div class="timeline-item group">
+                        <div class="timeline-dot {{ 'bg-emerald-500 shadow-emerald-100' if event.event_type == 'dividend' else ('bg-amber-500 shadow-amber-100' if event.event_type == 'increase' else 'bg-blue-500 shadow-blue-100') }}"></div>
+                        
+                        <div class="bg-white border border-gray-100 rounded-xl p-3 flex items-center justify-between hover:shadow-md transition-all group-hover:border-l-4 {{ 'group-hover:border-l-emerald-500' if event.event_type == 'dividend' else 'group-hover:border-l-blue-500' }}">
+                            
+                            <div class="flex items-center gap-4">
+                                <div class="bg-gray-50 px-3 py-2 rounded-lg text-center min-w-[70px]">
+                                    <span class="block text-[10px] text-gray-400">{{ event.event_date | jalali | persian_num }}</span>
+                                </div>
+                                
+                                <div class="flex items-center gap-2">
+                                    {% if event.symbol %}
+                                        <span class="text-[10px] font-black bg-indigo-50 text-[#5E2BFF] px-2 py-1 rounded">{{ event.symbol }}</span>
+                                    {% endif %}
+                                    
+                                    <h4 class="font-bold text-gray-700 text-sm">
+                                        {{ event.title }}
+                                        {% if event.amount > 0 %}
+                                            <span class="text-gray-300 mx-1">-</span>
+                                            <span class="font-black text-gray-800">{{ event.amount | currency | persian_num }} <span class="text-[9px] font-normal text-gray-400">ریال</span></span>
+                                        {% endif %}
+                                    </h4>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center gap-2">
+                                {% if event.is_processed %}
+                                    <span class="text-[10px] text-green-600 bg-green-50 px-2 py-1 rounded font-bold border border-green-100">انجام شد</span>
+                                {% elif event.event_type == 'dividend' %}
+                                    <a href="/event/process_dividend/{{ event.id }}" class="text-[10px] bg-[#5E2BFF] text-white px-3 py-1.5 rounded-lg font-bold hover:bg-indigo-700 transition shadow-sm">
+                                        اعمال سود نقدی
+                                    </a>
+                                {% endif %}
+                                <button onclick="openDeleteModal('/event/delete/{{ event.id }}')" class="text-gray-300 hover:text-red-500 px-2 text-lg transition">✕</button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    {% if not ns.has_event %}
+                    <div class="flex flex-col items-center justify-center py-16 pr-8 opacity-60">
+                        <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                            <svg class="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
+                        </div>
+                        <span class="text-sm font-bold text-gray-500">هنوز رویدادی ثبت نشده است.</span>
+                        <button onclick="openEventModal()" class="text-xs text-[#5E2BFF] font-bold mt-2 hover:underline">اولین رویداد را ثبت کنید</button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-1">
+            <div class="bg-gray-50 rounded-2xl border border-gray-200 p-5 h-full relative">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-gray-700 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                        یادداشت‌ها
+                    </h3>
+                    <button onclick="openNoteModal()" class="text-[10px] bg-white border border-gray-200 text-gray-500 px-2 py-1 rounded hover:text-[#5E2BFF] hover:border-[#5E2BFF] transition">افزودن</button>
+                </div>
+                
+                <div class="space-y-3">
+                    {% for note in events if note.event_type == 'note' %}
+                    <div class="note-card p-4 rounded-xl relative group cursor-default">
+                        <p class="text-sm text-gray-700 font-medium leading-relaxed">{{ note.title }}</p>
+                        <div class="mt-3 pt-2 border-t border-yellow-200/50 flex justify-between items-center">
+                            <span class="text-[9px] text-yellow-600/70">{{ note.event_date | jalali | persian_num }}</span>
+                            <button onclick="openDeleteModal('/event/delete/{{ note.id }}')" 
+                                    class="text-gray-400 hover:text-red-500 transition p-1" title="حذف">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </button>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-8 opacity-50">
+                        <span class="text-xs text-gray-400">یادداشتی وجود ندارد.</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="eventModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm transition-opacity" onclick="closeEventModal()"></div>
+        <div class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-visible p-6 transform transition-all scale-100">
+            
+            <div class="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
+                <h3 class="font-black text-gray-800 text-lg">ثبت رویداد جدید</h3>
+                <button onclick="closeEventModal()" class="text-gray-400 hover:text-red-500 transition rounded-full p-1 hover:bg-red-50">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            
+            <form method="POST" id="addEventForm" onsubmit="return validateEventForm()">
+                <input type="hidden" name="form_type" value="event">
+                <input type="hidden" name="title" id="eventTitleInput">
+
+                <div class="space-y-5">
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-2">نوع رویداد</label>
+                        <div class="custom-select-container">
+                            <button type="button" class="select-trigger" onclick="toggleSelect(this)">
+                                <span class="selected-text text-gray-700 font-bold" id="eventTypeDisplay">واریز سود نقدی (DPS)</span>
+                                <svg class="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                            </button>
+                            <div class="select-options">
+                                <div class="select-option selected" onclick="selectEventType(this, 'dividend', 'واریز سود نقدی (DPS)')">واریز سود نقدی (DPS)</div>
+                                <div class="select-option" onclick="selectEventType(this, 'meeting_annual', 'برگزاری مجمع عمومی سالیانه')">برگزاری مجمع عمومی سالیانه</div>
+                                <div class="select-option" onclick="selectEventType(this, 'meeting_extra', 'برگزاری مجمع عمومی فوق‌العاده')">برگزاری مجمع عمومی فوق‌العاده</div>
+                                <div class="select-option" onclick="selectEventType(this, 'increase', 'افزایش سرمایه')">افزایش سرمایه</div>
+                            </div>
+                            <input type="hidden" name="type" id="eventTypeInput" value="dividend">
+                        </div>
+                    </div>
+
+                    <div class="relative input-group">
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-2">نماد</label>
+                        <input type="text" name="symbol" id="eventSymbol" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-[#5E2BFF] focus:bg-white text-sm font-bold outline-none transition placeholder-gray-300" placeholder="مثلا: فولاد" autocomplete="off">
+                        <div id="symbolSuggestions" class="suggestions-list"></div>
+                        <div class="validation-tooltip">این فیلد الزامی‌ست</div>
+                    </div>
+
+                    <div id="recordDateGroup" class="hidden">
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-2">تاریخ برگزاری مجمع</label>
+                        <div class="relative mb-4">
+                            <input type="text" id="recordDateDisplay" readonly class="w-full p-3 pl-10 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 cursor-pointer outline-none focus:border-[#5E2BFF] focus:bg-white transition text-center" onclick="toggleDatepicker('datepicker-record')">
+                            <input type="hidden" name="record_date" id="recordDateInput">
+                            <div id="datepicker-record" class="hidden absolute bottom-full mb-2 w-full bg-white rounded-xl shadow-xl border border-gray-100 p-3 z-50"></div>
+                        </div>
+                    </div>
+
+                    <div class="relative">
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-2">تاریخ برگزاری / پرداخت</label>
+                        <div class="relative">
+                            <input type="text" id="eventDateDisplay" readonly class="w-full p-3 pl-10 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 cursor-pointer outline-none focus:border-[#5E2BFF] focus:bg-white transition" onclick="document.getElementById('picker-event').classList.remove('hidden'); renderPickerCalendar(document.getElementById('picker-event'), 'event');">
+                            <input type="hidden" name="date" id="eventDateInput">
+                            <div id="picker-event" class="hidden absolute bottom-full mb-2 w-64 bg-white rounded-xl shadow-xl border border-gray-100 p-3 z-50"></div>
+                        </div>
+                    </div>
+
+                    <div id="dynamicField" class="transition-all duration-300">
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-2" id="dynamicLabel">مبلغ سود هر سهم (DPS)</label>
+                        <div class="relative">
+                            <input type="text" name="amount" id="amountInput" 
+                                   class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-black text-gray-800 money-input focus:border-[#5E2BFF] focus:bg-white outline-none transition placeholder-gray-400 text-right" 
+                                   placeholder="مثلا: 500" dir="ltr">
+                            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-[10px] text-gray-400 font-bold" id="dynamicUnit">ریال</span>
+                        </div>
+                    </div>
+
+                </div>
+                
+                <button type="submit" class="w-full bg-[#5E2BFF] text-white py-3.5 rounded-xl font-bold text-sm mt-8 hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">
+                    ثبت رویداد
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div id="noteModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm transition-opacity" onclick="closeNoteModal()"></div>
+        <div class="relative w-full max-w-sm bg-yellow-50 rounded-2xl shadow-xl border border-yellow-100 p-6 transform transition-all scale-100">
+            <h3 class="font-black text-yellow-800 mb-4 text-lg">یادداشت جدید</h3>
+            <form method="POST">
+                <input type="hidden" name="form_type" value="note">
+                <textarea name="note_text" rows="4" class="w-full bg-white p-3 rounded-xl border border-yellow-200 focus:border-yellow-400 outline-none text-sm text-gray-700 placeholder-gray-400 resize-none" placeholder="متن یادداشت خود را بنویسید..."></textarea>
+                <div class="flex gap-3 mt-4">
+                    <button type="button" onclick="closeNoteModal()" class="flex-1 py-2.5 rounded-xl border border-yellow-200 text-yellow-700 text-sm font-bold hover:bg-yellow-100 transition">لغو</button>
+                    <button type="submit" class="flex-1 py-2.5 rounded-xl bg-yellow-400 text-yellow-900 text-sm font-bold hover:bg-yellow-500 transition shadow-md">ذخیره</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="deleteModal" class="fixed inset-0 z-[80] hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity" onclick="closeDeleteModal()"></div>
+        <div class="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl p-6 transform transition-all scale-100">
+            <div class="text-center">
+                <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                </div>
+                <h3 class="text-lg font-black text-gray-800 mb-2">حذف آیتم</h3>
+                <p class="text-xs text-gray-500 mb-6 leading-relaxed">آیا از حذف این مورد اطمینان دارید؟<br>این عملیات غیرقابل بازگشت است.</p>
+                <div class="flex gap-3">
+                    <button onclick="closeDeleteModal()" class="flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 font-bold text-xs hover:bg-gray-50 transition">انصراف</button>
+                    <button onclick="confirmDelete()" class="flex-1 py-3 rounded-xl bg-red-500 text-white font-bold text-xs hover:bg-red-600 transition shadow-lg shadow-red-200">بله، حذف شود</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const marketSymbols = [
+            {% for item in market_data %}
+            { symbol: "{{ item.symbol }}", name: "{{ item.company_name }}" },
+            {% endfor %}
+        ];
+
+        // --- Modal Logic ---
+        function openEventModal() { 
+            document.getElementById('eventModal').classList.remove('hidden');
+            const now = new Date(); const jNow = jalaali.toJalaali(now);
+            const dateStr = toPersianNum(`${jNow.jy}/${String(jNow.jm).padStart(2,'0')}/${String(jNow.jd).padStart(2,'0')}`);
+            const isoStr = now.toISOString().split('T')[0];
+            
+            document.getElementById('eventDateInput').value = isoStr;
+            document.getElementById('eventDateDisplay').value = dateStr;
+            document.getElementById('recordDateInput').value = isoStr;
+            document.getElementById('recordDateDisplay').value = dateStr;
+            
+            document.getElementById('addEventForm').reset();
+            selectEventType(document.querySelector('.select-option.selected'), 'dividend', 'واریز سود نقدی (DPS)');
+        }
+        function closeEventModal() { document.getElementById('eventModal').classList.add('hidden'); }
+        
+        function openNoteModal() { document.getElementById('noteModal').classList.remove('hidden'); }
+        function closeNoteModal() { document.getElementById('noteModal').classList.add('hidden'); }
+        
+        // --- Delete Modal Logic ---
+        let deleteUrl = '';
+        function openDeleteModal(url) {
+            deleteUrl = url;
+            document.getElementById('deleteModal').classList.remove('hidden');
+        }
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').classList.add('hidden');
+            deleteUrl = '';
+        }
+        function confirmDelete() {
+            if (deleteUrl) window.location.href = deleteUrl;
+        }
+
+        // --- Custom Select & Dynamic Fields ---
+        function toggleSelect(btn) { 
+            const container = btn.closest('.custom-select-container'); 
+            container.querySelector('.select-options').classList.toggle('show'); 
+        }
+        
+        function selectEventType(item, value, text) {
+            const container = item.closest('.custom-select-container');
+            if(!container) return;
+            document.getElementById('eventTypeInput').value = value;
+            document.getElementById('eventTypeDisplay').innerText = text;
+            container.querySelector('.select-options').classList.remove('show');
+            container.querySelectorAll('.select-option').forEach(el => el.classList.remove('selected'));
+            item.classList.add('selected');
+            
+            const dynField = document.getElementById('dynamicField');
+            const recordGroup = document.getElementById('recordDateGroup');
+            const label = document.getElementById('dynamicLabel');
+            const unit = document.getElementById('dynamicUnit');
+            const input = document.getElementById('amountInput');
+            
+            dynField.classList.remove('hidden');
+            
+            if (value === 'dividend') {
+                label.innerText = 'مبلغ سود هر سهم (DPS)'; 
+                unit.innerText = 'ریال'; 
+                input.value = ''; 
+                input.placeholder = 'مثلا: 500';
+                recordGroup.classList.remove('hidden'); 
+            } else if (value === 'increase') {
+                label.innerText = 'درصد افزایش سرمایه (احتمالی)'; 
+                unit.innerText = 'درصد'; 
+                input.value = ''; 
+                input.placeholder = 'مثلا: 50';
+                recordGroup.classList.add('hidden');
+            } else {
+                dynField.classList.add('hidden'); 
+                input.value = '0';
+                recordGroup.classList.add('hidden');
+            }
+        }
+        
+        document.addEventListener('click', function(e) { if (!e.target.closest('.custom-select-container')) { document.querySelectorAll('.select-options').forEach(el => el.classList.remove('show')); } });
+
+        // --- Autocomplete ---
+        const searchInput = document.getElementById('eventSymbol');
+        const suggestionsList = document.getElementById('symbolSuggestions');
+        searchInput.addEventListener('input', function() {
+            const query = this.value.trim();
+            suggestionsList.innerHTML = '';
+            if (query.length < 1) { suggestionsList.classList.remove('show'); return; }
+            let filtered = marketSymbols.filter(s => s.symbol.includes(query) || s.name.includes(query));
+            filtered.sort((a, b) => { if(a.symbol === query) return -1; if(a.symbol.startsWith(query) && !b.symbol.startsWith(query)) return -1; return 0; });
+            const finalResults = filtered.slice(0, 5);
+            if (finalResults.length > 0) {
+                suggestionsList.classList.add('show');
+                finalResults.forEach(item => {
+                    const div = document.createElement('div'); div.className = "suggestion-item flex justify-between";
+                    div.innerHTML = `<span class="font-bold">${item.symbol}</span><span class="text-[10px] text-gray-400">${item.name}</span>`;
+                    div.onclick = () => { searchInput.value = item.symbol; suggestionsList.classList.remove('show'); };
+                    suggestionsList.appendChild(div);
+                });
+            } else { suggestionsList.classList.remove('show'); }
+        });
+        document.addEventListener('click', (e) => { if (e.target !== searchInput) suggestionsList.classList.remove('show'); });
+
+        function validateEventForm() {
+            const symbolInput = document.getElementById('eventSymbol');
+            const titleInput = document.getElementById('eventTitleInput');
+            titleInput.value = document.getElementById('eventTypeDisplay').innerText;
+            if (!symbolInput.value.trim()) {
+                symbolInput.closest('.input-group').querySelector('.validation-tooltip').classList.add('show');
+                symbolInput.classList.add('input-error');
+                symbolInput.addEventListener('input', () => { symbolInput.classList.remove('input-error'); symbolInput.closest('.input-group').querySelector('.validation-tooltip').classList.remove('show'); }, {once: true});
+                return false;
+            }
+            return true;
+        }
+
+        // --- Date Picker Logic ---
+        let pYear = jalaali.toJalaali(new Date()).jy; let pMonth = jalaali.toJalaali(new Date()).jm;
+        function renderPickerCalendar(container, prefix) {
+            container.innerHTML = `<div class="flex justify-between items-center mb-2"><button type="button" onclick="changeMonth(-1, '${prefix}')" class="p-1 hover:bg-gray-100 rounded">❮</button><span class="text-xs font-bold">${toPersianNum(pMonth)} / ${toPersianNum(pYear)}</span><button type="button" onclick="changeMonth(1, '${prefix}')" class="p-1 hover:bg-gray-100 rounded">❯</button></div>`;
+            const grid = document.createElement('div'); grid.className = "grid grid-cols-7 gap-1 text-center";
+            grid.innerHTML = '<div class="text-[10px] text-gray-400">ش</div><div class="text-[10px] text-gray-400">ی</div><div class="text-[10px] text-gray-400">د</div><div class="text-[10px] text-gray-400">س</div><div class="text-[10px] text-gray-400">چ</div><div class="text-[10px] text-gray-400">پ</div><div class="text-[10px] text-red-400">ج</div>';
+            const days = jalaali.jalaaliMonthLength(pYear, pMonth);
+            const startDay = new Date(jalaali.toGregorian(pYear, pMonth, 1).gy, jalaali.toGregorian(pYear, pMonth, 1).gm - 1, jalaali.toGregorian(pYear, pMonth, 1).gd).getDay();
+            const padding = {6:0, 0:1, 1:2, 2:3, 3:4, 4:5, 5:6}[startDay];
+            for(let i=0; i<padding; i++) grid.appendChild(document.createElement('div'));
+            for(let i=1; i<=days; i++) {
+                const btn = document.createElement('button'); btn.type='button'; btn.innerText=toPersianNum(i);
+                btn.className="w-8 h-8 rounded text-sm hover:bg-gray-100 flex items-center justify-center font-bold text-gray-700";
+                btn.onclick=(e)=>{
+                    e.stopPropagation();
+                    const g = jalaali.toGregorian(pYear, pMonth, i);
+                    const inpId = prefix === 'record' ? 'recordDateInput' : 'eventDateInput';
+                    const dispId = prefix === 'record' ? 'recordDateDisplay' : 'eventDateDisplay';
+                    
+                    document.getElementById(inpId).value = `${g.gy}-${String(g.gm).padStart(2,'0')}-${String(g.gd).padStart(2,'0')}`;
+                    document.getElementById(dispId).value = toPersianNum(`${pYear}/${String(pMonth).padStart(2,'0')}/${String(i).padStart(2,'0')}`);
+                    container.classList.add('hidden');
+                }; grid.appendChild(btn);
+            }
+            container.appendChild(grid);
+        }
+        window.changeMonth = function(o, p) { pMonth+=o; if(pMonth>12){pMonth=1; pYear++}else if(pMonth<1){pMonth=12; pYear--}; 
+            const prefix = p === 'record' ? 'record' : 'event';
+            renderPickerCalendar(document.getElementById(p === 'record' ? 'picker-record' : 'picker-event'), prefix); 
+        }
+        
+        document.addEventListener('click', function(event) { 
+            const p1 = document.getElementById('picker-event'); const i1 = document.getElementById('eventDateDisplay');
+            if (p1 && !p1.contains(event.target) && event.target !== i1) p1.classList.add('hidden');
+            
+            const p2 = document.getElementById('picker-record'); const i2 = document.getElementById('recordDateDisplay');
+            if (p2 && !p2.contains(event.target) && event.target !== i2) p2.classList.add('hidden');
+        });
+        
+        function toggleDatepicker(id) { document.getElementById(id).classList.toggle('hidden'); }
+
+        document.addEventListener('input', function (e) { 
+            if (e.target.classList.contains('money-input')) { 
+                let val = e.target.value.replace(/[۰-۹]/g, d => "۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/[^0-9]/g, ''); 
+                if (val === "") { e.target.value = ""; return; } 
+                e.target.value = parseInt(val).toLocaleString('en-US'); 
+            } 
+        });
+        function toPersianNum(num) { return String(num).replace(/\d/g, d => "۰۱۲۳۴۵۶۷۸۹"[d]); }
+    </script>
+
+{% endblock %}

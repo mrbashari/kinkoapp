@@ -1,0 +1,1107 @@
+<start_of_user_uploaded_file: portfolio_details.html>{% extends "base.html" %}
+
+{% block title %}جزئیات پرتفوی | {{ my_portfolio.info.name }}{% endblock %}
+
+{% block content %}
+
+    <style>
+        /* استایل‌های اختصاصی این صفحه */
+        .theme-Low .text-theme { color: #84dcc6; } .theme-Low .bg-theme { background-color: #84dcc6; }
+        .theme-Medium .text-theme { color: #5E2BFF; } .theme-Medium .bg-theme { background-color: #5E2BFF; }
+        .theme-High .text-theme { color: #ff686b; } .theme-High .bg-theme { background-color: #ff686b; }
+
+        .linear-stat { display: flex; align-items: center; justify-content: space-between; padding: 16px; background: white; border: 1px solid #f1f5f9; border-radius: 16px; transition: all 0.2s; }
+        .linear-stat:hover { border-color: #e2e8f0; transform: translateY(-1px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+    </style>
+
+    <!-- هدر و دکمه‌ها -->
+    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+        <div class="flex items-center gap-3 self-start md:self-auto">
+        <div class="flex flex-row items-center">
+            <h1 class="text-md font-bold text-gray-800">{{ my_portfolio.info.name }}</h1>
+            <span class="text-[14px] text-gray-400 border rounded-full px-4 py-1 mr-2">سبدگردان: {{ my_portfolio.info.manager_name }}</span>
+        </div>
+    </div>
+        
+        <div class="flex gap-2 self-end md:self-auto relative">
+            <!-- Risk Control Center Dropdown -->
+            <div class="relative">
+                <button onclick="toggleRisk()" id="riskBtn" class="px-3 py-2 bg-white border border-gray-200 text-gray-600 rounded-xl text-xs font-bold hover:border-red-500 hover:text-red-600 transition flex items-center gap-2 relative">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    کنترل ریسک
+                    {% if my_portfolio.risk_analysis.alert_count > 0 %}
+                    <span class="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                    </span>
+                    {% endif %}
+                </button>
+
+                <!-- Dropdown Content -->
+                <div id="riskDropdown" class="hidden absolute top-full right-0 mt-2 w-80 bg-white rounded-md shadow-md border border-gray-100 z-50 overflow-hidden transform origin-top-right transition-all">
+                    <div class="px-4 py-3 border-b border-gray-50 bg-gray-50/50 flex justify-between items-center">
+                        <h4 class="font-bold text-gray-800 text-[14px]">وضعیت ریسک</h4>
+                        {% if my_portfolio.risk_analysis.alert_count > 0 %}
+                            <span class="text-[10px] font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded">{{ my_portfolio.risk_analysis.alert_count | persian_num }} هشدار</span>
+                        {% else %}
+                            <span class="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded">ایمن</span>
+                        {% endif %}
+                    </div>
+                    <div class="max-h-80 overflow-y-auto custom-scrollbar p-1">
+                        {% if my_portfolio.risk_analysis and my_portfolio.risk_analysis.alerts %}
+                            {% for alert in my_portfolio.risk_analysis.alerts %}
+                            <div class="p-3 hover:bg-gray-50 rounded-xl transition-colors border-b border-gray-50/50 last:border-0 group cursor-default">
+                                <div class="flex gap-3 items-start">
+                                    <div class="mt-0.5 shrink-0">
+                                        {% if alert.level == 'critical' %}
+                                            <svg class="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+                                        {% else %}
+                                            <svg class="w-5 h-5 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <div class="flex items-center gap-2 mb-1">
+                                            <span class="block text-xs font-bold text-gray-800">
+                                                {% if alert.type == 'stop_loss' %}شکست حد ضرر{% else %}ریسک تمرکز{% endif %}
+                                            </span>
+                                            {% if alert.symbol %}
+                                            <span class="text-[12px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 font-medium">{{ alert.symbol }}</span>
+                                            {% endif %}
+                                        </div>
+                                        <p class="text-[12px] text-gray-500 leading-relaxed">{{ alert.message }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="p-8 text-center flex flex-col items-center justify-center text-gray-400">
+                                <svg class="w-8 h-8 mb-2 opacity-20 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                <span class="text-xs text-green-600 font-bold">همه چیز تحت کنترل است.</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <!-- Smart Insights Dropdown -->
+            <div class="relative">
+                <button onclick="toggleInsights()" id="insightsBtn" class="px-3 py-2 bg-white border border-gray-200 text-gray-600 rounded-xl text-xs font-bold hover:border-yellow-500 hover:text-yellow-600 transition flex items-center gap-2 relative">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+                    </svg>
+                    نکات هوشمند
+                    {% if insights %}
+                    <span class="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                    </span>
+                    {% endif %}
+                </button>
+
+                <!-- Dropdown Content -->
+                <div id="insightsDropdown" class="hidden absolute top-full right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden transform origin-top-right transition-all">
+                    <div class="px-4 py-3 border-b border-gray-50 bg-gray-50/50 flex justify-between items-center">
+                        <h4 class="font-bold text-gray-800 text-[14px]">تحلیل‌های هوشمند</h4>
+                        <span class="text-[12px] text-gray-400 font-medium border rounded-full px-2 py-1">{{ insights|length }} نکته</span>
+                    </div>
+                    <div class="max-h-80 overflow-y-auto custom-scrollbar p-1">
+                        {% if insights %}
+                            {% for insight in insights %}
+                            <div class="p-3 hover:bg-gray-50 rounded-xl transition-colors border-b border-gray-50/50 last:border-0 group cursor-default">
+                                <div class="flex gap-3 items-start">
+                                    <div class="mt-0.5 shrink-0">
+                                        {% if insight.type == 'danger' %}
+                                            <svg class="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+                                        {% elif insight.type == 'warning' %}
+                                            <svg class="w-5 h-5 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                                        {% else %}
+                                            <svg class="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <span class="block text-xs font-bold text-gray-800 mb-1 group-hover:text-[#5E2BFF] transition-colors">{{ insight.title }}</span>
+                                        <p class="text-xs text-gray-500 leading-relaxed">{{ insight.text }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="p-8 text-center flex flex-col items-center justify-center text-gray-400">
+                                <svg class="w-8 h-8 mb-2 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                <span class="text-xs">هیچ نکته‌ای یافت نشد.</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <button onclick="openStressModal()" class="px-3 py-2 bg-white border border-gray-200 text-gray-600 rounded-xl text-xs font-bold hover:border-red-500 hover:text-red-500 transition flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg> تست استرس
+            </button>
+            <a href="{{ url_for('portfolio_calendar', portfolio_id=my_portfolio.info.id) }}" class="px-3 py-2 bg-white border border-gray-200 text-gray-600 rounded-xl text-xs font-bold hover:border-[#5E2BFF] hover:text-[#5E2BFF] transition flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg> تقویم
+            </a>
+            <a href="{{ url_for('portfolio_performance', portfolio_id=my_portfolio.info.id) }}" class="px-3 py-2 bg-white border border-gray-200 text-gray-600 rounded-xl text-xs font-bold hover:border-blue-500 hover:text-blue-500 transition flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg> عملکرد
+            </a>
+            <a href="/portfolio/{{ my_portfolio.info.id }}/turnover" class="px-3 py-2 bg-white border border-gray-200 text-gray-600 rounded-xl text-xs font-bold hover:border-green-500 hover:text-green-500 transition flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3" /></svg> تاریخچه
+            </a>
+            <a href="{{ url_for('portfolio_report', portfolio_id=my_portfolio.info.id) }}" class="px-3 py-2 bg-white border border-gray-200 text-gray-600 rounded-xl text-xs font-bold hover:border-[#5E2BFF] hover:text-[#5E2BFF] transition flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" /></svg> چاپ
+            </a>
+            <!-- NEW BACK BUTTON -->
+            <a href="{{ url_for('manage_portfolios') }}" class="px-3 py-2 bg-white border border-rose-200 rounded-xl text-xs font-bold transition flex items-center gap-2 hover:border-rose-400">
+                <svg class="w-6 h-6 text-rose-600 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12l4-4m-4 4 4 4"/></svg>
+            </a>
+        </div>
+    </div>
+
+    <!-- گرید اصلی صفحه -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 theme-{{ my_portfolio.info.risk_level }}">
+        <div class="lg:col-span-1 space-y-4 order-2 lg:order-1">
+            <!-- Total Asset Value (AUM) Widget -->
+            <div class="linear-stat">
+                <div class="flex items-center gap-3">
+                    <span class="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-500">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" /></svg>
+                    </span>
+                    <span class="text-sm font-bold text-gray-500">ارزش کل (AUM)</span>
+                </div>
+                <div class="text-right flex items-baseline gap-1">
+                    <span class="block text-base font-black text-gray-800">{{ my_portfolio.total_value | currency | persian_num }}</span>
+                    <span class="text-xs font-semibold text-gray-400">ریال</span>
+                </div>
+            </div>
+            
+            <!-- Buying Power Widget -->
+            <div class="linear-stat">
+                <div class="flex items-center gap-3">
+                    <span class="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center text-teal-500">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3" /></svg>
+                    </span>
+                    <span class="text-sm font-bold text-gray-500">قدرت خرید</span>
+                </div>
+                <div class="text-right flex items-baseline gap-1">
+                    <span class="block text-base font-black {{ 'text-teal-600' if my_portfolio.cash_balance >= 0 else 'text-rose-600' }}">
+                        {{ my_portfolio.cash_balance | currency | persian_num }}
+                    </span>
+                    <span class="text-xs font-semibold text-gray-400">ریال</span>
+                </div>
+            </div>
+
+            <!-- چارت تنوع دارایی -->
+            <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm h-auto flex flex-col">
+                <!-- Header: Total value moved here -->
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h3 class="font-bold text-gray-800 text-sm mb-1">تنوع دارایی‌ها</h3>
+                        <span class="text-xs text-gray-400">Real-time Allocation</span>
+                    </div>
+                    <div class="text-right">
+                        <span class="block text-xs font-bold mb-1 text-gray-500">ارزش کل سبد</span>
+                        <span class="block text-[14px] font-medium text-gray-800 dir-ltr">{{ my_portfolio.total_value | large_fmt | persian_num }}<span class="mr-2 text-sm text-gray-400">ریال</span></span>
+                    </div>
+                </div>
+                
+                <!-- Chart Canvas Container: Sized up, center div removed -->
+                <div class="flex-1 flex flex-col items-center justify-center relative min-h-[240px]">
+                    <div class="relative w-52 h-52 z-10">
+                        <canvas id="sectorChart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Legend remains unchanged but will adapt to data -->
+                <div id="chartLegend" class="space-y-3 mt-4"></div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-3 order-1 lg:order-2 space-y-6">
+            
+            <!-- بنچمارک آلفا - طرح افقی جدید -->
+            <div class="bg-white rounded-md p-2 border border-gray-200 flex flex-col sm:flex-row items-center justify-around gap-4 text-sm">
+                
+                <!-- 1. Portfolio Return -->
+                <div class="flex items-center gap-2">
+                    <span class="text-xs text-gray-500">بازدهی سبد:</span>
+                    <span class="font-bold text-md {{ 'text-green-600' if my_portfolio.benchmark.portfolio_return >= 0 else 'text-red-500' }}">
+                        %{{ my_portfolio.benchmark.portfolio_return | round(2) | persian_num }}
+                    </span>
+                </div>
+
+                <!-- Divider -->
+                <div class="h-6 w-px bg-gray-200 hidden sm:block"></div>
+
+                <!-- 2. Benchmark Return -->
+                <div class="flex items-center gap-2">
+                    <span class="text-xs text-gray-500">بازدهی شاخص:</span>
+                    <span class="font-bold text-md dir-ltr {{ 'text-green-600' if my_portfolio.benchmark.index_return >= 0 else 'text-red-500' }}">
+                        {{ '+' if my_portfolio.benchmark.index_return > 0 else '' }}{{ my_portfolio.benchmark.index_return | round(2) | persian_num }}%
+                    </span>
+                </div>
+
+                <!-- Divider -->
+                <div class="h-6 w-px bg-gray-200 hidden sm:block"></div>
+
+                <!-- 3. Alpha (Relative Performance) with Tooltip -->
+                <div class="flex items-center gap-2">
+                    <span class="text-xs text-gray-500">عملکرد نسبی آلفا:</span>
+                    <div class="relative group flex items-center gap-1">
+                        <span class="font-bold text-md dir-ltr {{ 'text-green-600' if my_portfolio.benchmark.alpha > 0 else 'text-red-500' }}">
+                            {{ my_portfolio.benchmark.alpha | round(2) | persian_num }}%
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- جدول دارایی‌های جاری -->
+            <div class="bg-white rounded-md border border-gray-200 overflow-hidden min-h-[300px] flex flex-col">
+                <div class="px-6 py-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+                    <h3 class="font-bold text-gray-800 text-sm">پورتفوی سهام</h3>
+                    <button onclick="openTransactionModal()" class="bg-[#1E293B] text-white px-4 py-2 rounded-md text-[14px] font-medium hover:bg-[#5E2BFF] transition shadow-sm flex items-center gap-2"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>ثبت تراکنش جدید</button>
+                </div>
+                <div class="overflow-x-auto flex-1">
+                    <table class="w-full text-right chic-table">
+                        <thead class="bg-white">
+                            <tr>
+                                <th class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">نماد</th>
+                                <th class="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">تعداد</th>
+                                <th class="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">سر‌به‌سر</th>
+                                <th class="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">قیمت روز</th>
+                                <th class="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">ارزش روز</th>
+                                <th class="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">سود/زیان</th>
+                                <th class="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">وزن</th>
+                                <th class="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">عملیات</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-50">
+                            {% for item in my_portfolio.holdings %}
+                            {% set pnl = (item.current_value - item.total_cost) %}
+                            {% set pnl_pct = (pnl / item.total_cost * 100) if item.total_cost > 0 else 0 %}
+                            <tr class="hover:bg-gray-50 transition group">
+                                <td class="px-6 py-4 font-bold text-gray-800 text-sm">
+                                    {{ item.symbol }}
+                                    <span class="text-xs text-gray-400 block font-normal">{{ item.name }}</span>
+                                </td>
+                                <td class="px-6 py-4 text-center font-bold text-gray-600 text-sm">{{ item.qty | currency | persian_num }}</td>
+                                <td class="px-6 py-4 text-center text-gray-500 text-sm">{{ item.avg_buy_price | currency | persian_num }}</td>
+                                <td class="px-6 py-4 text-center text-gray-800 text-sm">{{ item.price | currency | persian_num }}</td>
+                                <td class="px-6 py-4 text-center font-bold text-[#1E293B] text-sm">{{ item.current_value | currency | persian_num }}</td>
+                                <td class="px-6 py-4 text-center font-bold dir-ltr {{ 'text-green-500' if pnl >= 0 else 'text-red-500' }}">
+                                    <span class="block text-xs">%{{ pnl_pct | round(1) | persian_num }}</span>
+                                </td>
+                                <td class="px-6 py-4 text-center text-xs font-bold text-blue-500">%{{ item.weight | round(1) | persian_num }}</td>
+                                <td class="px-6 py-4 text-center">
+                                    <button onclick="openHistoryModal('{{ item.symbol }}')" class="text-gray-400 hover:text-blue-500 transition p-2 rounded-full hover:bg-blue-50" title="ریز معاملات">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+
+                </div>
+            </div>
+
+            <!-- بخش تحلیل انطباق -->
+            <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                <!-- Header: Horizontal layout -->
+                <div class="flex justify-between items-center mb-6">
+                    <div class="flex flex-row items-center">
+                        <h3 class="font-semibold text-gray-800 text-[14px]">تحلیل انطباق با استراتژی</h3>
+                        <p class="text-[14px] text-gray-500 mr-2">| مقایسه با مدل هدف: <span class="text-theme font-bold">{{ my_portfolio.info.risk_level }}</span></p>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="text-right"> 
+                            <div class="text-2xl font-black text-theme"><span class="text-xs font-medium ml-2 text-gray-500">امتیاز انطباق</span>{{ my_alignment_score | persian_num }}<span class="text-base text-gray-400 mr-1">%</span></div>
+                        </div>
+                        <button onclick="document.getElementById('targetModal').classList.remove('hidden')" class="bg-slate-100 text-slate-700 hover:bg-slate-200 px-4 py-2.5 rounded-xl text-xs font-bold transition-colors">
+                            نمادهای مدل
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Progress Bars -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {% set eq_diff = current_allocation.Equity - target_config.target_equity %}
+                    <div class="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                        <div class="flex justify-between text-sm font-bold text-gray-700 mb-3"><span>سهام</span><span>{{ current_allocation.Equity | round(1) | persian_num }}%</span></div>
+                        <div class="w-full bg-gray-200 rounded-full h-2 mb-3"><div class="bg-blue-500 h-2 rounded-full" style="width: {{ 100 if current_allocation.Equity > 100 else current_allocation.Equity }}%"></div></div>
+                        <div class="flex justify-between items-center text-xs"><span class="text-gray-500">هدف: {{ target_config.target_equity | persian_num }}%</span><span class="font-bold px-2 py-1 rounded-md {{ 'bg-red-100 text-red-600' if eq_diff > 2 else ('bg-teal-100 text-teal-700' if eq_diff < -2 else 'bg-gray-100 text-gray-500') }}">{% if eq_diff > 2 %}کاهش{% elif eq_diff < -2 %}افزایش{% else %}مطلوب{% endif %}</span></div>
+                    </div>
+
+                    {% set gd_diff = current_allocation.Gold - target_config.target_gold %}
+                    <div class="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                        <div class="flex justify-between text-sm font-bold text-gray-700 mb-3"><span>طلا</span><span>{{ current_allocation.Gold | round(1) | persian_num }}%</span></div>
+                        <div class="w-full bg-gray-200 rounded-full h-2 mb-3"><div class="bg-yellow-400 h-2 rounded-full" style="width: {{ 100 if current_allocation.Gold > 100 else current_allocation.Gold }}%"></div></div>
+                        <div class="flex justify-between items-center text-xs"><span class="text-gray-500">هدف: {{ target_config.target_gold | persian_num }}%</span><span class="font-bold px-2 py-1 rounded-md {{ 'bg-red-100 text-red-600' if gd_diff > 2 else ('bg-teal-100 text-teal-700' if gd_diff < -2 else 'bg-gray-100 text-gray-500') }}">{% if gd_diff > 2 %}کاهش{% elif gd_diff < -2 %}افزایش{% else %}مطلوب{% endif %}</span></div>
+                    </div>
+
+                    {% set fx_diff = current_allocation.Fixed - target_config.target_fixed_income %}
+                    <div class="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                        <div class="flex justify-between text-sm font-bold text-gray-700 mb-3"><span>درآمد ثابت</span><span>{{ current_allocation.Fixed | round(1) | persian_num }}%</span></div>
+                        <div class="w-full bg-gray-200 rounded-full h-2 mb-3"><div class="bg-teal-500 h-2 rounded-full" style="width: {{ 100 if current_allocation.Fixed > 100 else current_allocation.Fixed }}%"></div></div>
+                        <div class="flex justify-between items-center text-xs"><span class="text-gray-500">هدف: {{ target_config.target_fixed_income | persian_num }}%</span><span class="font-bold px-2 py-1 rounded-md {{ 'bg-red-100 text-red-600' if fx_diff > 2 else ('bg-teal-100 text-teal-700' if fx_diff < -2 else 'bg-gray-100 text-gray-500') }}">{% if fx_diff > 2 %}کاهش{% elif fx_diff < -2 %}افزایش{% else %}مطلوب{% endif %}</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- مودال‌ها -->     
+
+    <!-- MODAL: "Add New Transaction" -->
+<div id="addTransactionModal" class="fixed inset-0 z-[60] hidden pointer-events-none">
+    
+    <!-- Draggable Modal Panel -->
+    <div id="draggablePanel" class="absolute gap-4 top-1/4 left-1/2 -translate-x-1/2 w-full max-w-4xl p-4 bg-white backdrop-blur-sm rounded-md shadow-md border border-gray-200 pointer-events-auto flex flex-col md:flex-row overflow-hidden">
+        
+        <!-- Right Panel: Form -->
+        <div class="w-full md:w-7/12 p-6 border-gray-100/80 flex flex-col">
+            <!-- Header with specific drag handle -->
+            <div class="flex justify-between items-center pb-4 border-b border-gray-100">
+                <div class="flex items-center gap-3 text-gray-600">
+                    <!-- Specific Drag Handle Icon -->
+                    <div id="dragHandle" class="cursor-move p-1 text-gray-400 hover:text-gray-700 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                            <circle cx="9" cy="12" r="1.5"></circle>
+                            <circle cx="9" cy="6" r="1.5"></circle>
+                            <circle cx="9" cy="18" r="1.5"></circle>
+                            <circle cx="15" cy="12" r="1.5"></circle>
+                            <circle cx="15" cy="6" r="1.5"></circle>
+                            <circle cx="15" cy="18" r="1.5"></circle>
+                        </svg>
+                    </div>
+                    <h3 class="font-bold text-gray-800 text-base">ثبت تراکنش</h3>
+                </div>
+                <button type="button" onclick="closeAddModal()" class="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <form action="/portfolio/{{ my_portfolio.info.id }}/add_transaction" method="POST" id="ptForm" onsubmit="return validatePtForm()" class="flex-grow flex flex-col mt-6">
+                <div class="flex-grow">
+                    <input type="hidden" name="action_mode" id="ptActionMode" value="trade">
+                    
+                    <div class="flex bg-gray-100 p-1.5 rounded-xl mb-6">
+                        <button type="button" onclick="switchPtMode('trade')" id="pt-btn-trade" class="flex-1 py-2 rounded-xl text-sm font-semibold transition">خرید / فروش</button>
+                        <button type="button" onclick="switchPtMode('cash')" id="pt-btn-cash" class="flex-1 py-2 rounded-xl text-sm font-semibold transition">واریز / برداشت</button>
+                    </div>
+
+                    <!-- Trade Panel -->
+                    <div id="pt-panel-trade">
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <label class="cursor-pointer"><input type="radio" name="type" value="buy" checked class="peer hidden" onchange="updatePtBtn(); calcTransDetails();"><div class="py-3 rounded-xl text-center text-sm font-semibold bg-gray-50 border border-gray-200 text-gray-500 peer-checked:border-green-500 peer-checked:text-green-600 peer-checked:bg-green-50/50 transition">خرید</div></label>
+                            <label class="cursor-pointer"><input type="radio" name="type" value="sell" class="peer hidden" onchange="updatePtBtn(); calcTransDetails();"><div class="py-3 rounded-xl text-center text-sm font-semibold bg-gray-50 border border-gray-200 text-gray-500 peer-checked:border-red-500 peer-checked:text-red-600 peer-checked:bg-red-50/50 transition">فروش</div></label>
+                        </div>
+                        <div class="mb-4 relative z-40">
+                            <label class="block text-[14px] font-medium text-gray-500 mb-2">نام نماد</label>
+                            <div class="autocomplete-wrapper relative">
+                                <input type="text" name="symbol" id="ptSymbol" placeholder="نام نماد را وارد کنید." class="w-full bg-gray-50/70 border border-gray-200 rounded-xl py-3 px-4 text-sm font-medium outline-none focus:bg-white transition" autocomplete="off">
+                            </div>
+                            <input type="hidden" name="asset_class" id="ptAssetClass" value="Stock">
+                            <input type="hidden" name="market_type" id="ptMarketType" value="TSE">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div><label class="block text-[14px] font-medium text-gray-500 mb-2">تعداد</label><input type="text" name="quantity" id="ptQty" placeholder="0" class="w-full bg-gray-50/70 border border-gray-200 rounded-xl py-3 px-4 text-center text-sm font-bold outline-none focus:border-[#5E2BFF] focus:bg-white transition dir-ltr money-input" oninput="calcTransDetails()"></div>
+                            <div><label class="block text-[14px] font-medium text-gray-500 mb-2">قیمت واحد</label><input type="text" name="price" id="ptPrice" placeholder="0" class="w-full bg-gray-50/70 border border-gray-200 rounded-xl py-3 px-4 text-center text-sm font-bold outline-none focus:border-[#5E2BFF] focus:bg-white transition dir-ltr money-input" oninput="calcTransDetails()"></div>
+                        </div>
+                    </div>
+
+                    <!-- Cash Panel -->
+                    <div id="pt-panel-cash" class="hidden">
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <label class="cursor-pointer"><input type="radio" name="type_cash" value="deposit" checked class="peer hidden" onchange="updatePtBtn(); calcTransDetails();"><div class="py-3 rounded-xl text-center text-sm font-semibold bg-gray-50 border border-gray-200 text-gray-500 peer-checked:border-blue-500 peer-checked:text-blue-600 peer-checked:bg-blue-50/50 transition">واریز</div></label>
+                            <label class="cursor-pointer"><input type="radio" name="type_cash" value="withdraw" class="peer hidden" onchange="updatePtBtn(); calcTransDetails();"><div class="py-3 rounded-xl text-center text-sm font-semibold bg-gray-50 border border-gray-200 text-gray-500 peer-checked:border-orange-500 peer-checked:text-orange-600 peer-checked:bg-orange-50/50 transition">برداشت</div></label>
+                        </div>
+                        <div class="mt-6 mb-6"><label class="block text-[14px] font-medium text-gray-500 mb-2">مبلغ (ریال)</label><input type="text" name="price_cash" id="ptAmountCash" placeholder="مبلغ را وارد کنید" class="w-full bg-gray-50 border rounded-xl py-3 px-4 text-center text-sm font-medium outline-none focus:bg-white text-[#1E293B] transition dir-ltr money-input" oninput="calcTransDetails()"></div>
+                    </div>
+                </div>
+
+                <!-- Dateicker remains at the bottom -->
+                <div class="relative z-70">
+                    <label class="block text-[14px] font-medium text-gray-500 mb-2">تاریخ انجام</label>
+                    <div class="relative">
+                        <input type="text" id="ptDateDisplay" readonly class="w-full bg-gray-50/70 border border-gray-200 rounded-xl py-3 px-4 text-center text-sm font-bold cursor-pointer hover:border-blue-400 focus:ring-2 focus:ring-blue-100 transition outline-none" onclick="toggleDatepicker('datepicker-pt')">
+                        <input type="hidden" name="date" id="ptDateInput">
+                        <div id="datepicker-pt" class="hidden absolute bottom-full mb-2 left-0 right-0 bg-white rounded-xl shadow-lg border border-gray-200 p-3" style="z-index: 50;">
+                            <div class="flex justify-between items-center mb-2"><button type="button" onclick="event.stopPropagation(); changePtMonth(-1)" class="p-2 hover:bg-gray-100 rounded-full">❮</button><span id="ptMonthLabel" class="text-sm font-bold text-gray-700"></span><button type="button" onclick="event.stopPropagation(); changePtMonth(1)" class="p-2 hover:bg-gray-100 rounded-full">❯</button></div>
+                            <div class="grid grid-cols-7 text-center text-xs text-gray-400 mb-2"><span>ش</span><span>ی</span><span>د</span><span>س</span><span>چ</span><span>پ</span><span class="text-red-400">ج</span></div>
+                            <div class="grid grid-cols-7 gap-1" id="pt-days"></div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Left Panel: Calculations -->
+        <div class="w-full md:w-7/12 bg-white p-8 mr-1 flex flex-col justify-between border-r">
+            <div>
+                <h4 class="font-semibold text-gray-700 text-base mb-4">پیش‌فاکتور</h4>
+                <div class="space-y-3 bg-white p-4 rounded-xl border-2 border-gray-100">
+                    <div class="flex justify-between items-center text-sm"><span class="text-gray-500">ارزش خالص:</span><div><span class="font-semibold text-gray-800" id="calcBaseVal">0</span><span class="mr-2 text-gray-300">ریال</span></div></div>
+                    <div class="flex justify-between items-center text-sm"><span class="text-gray-500">کارمزد:</span><div><span class="font-semibold text-gray-500" id="calcComm">0</span><span class="mr-2 text-gray-300">ریال</span></div></div>
+                    <div class="h-px bg-dashed border-t border-gray-200 my-2"></div>
+                    <div class="flex justify-between items-center"><span class="text-sm font-bold text-gray-800">مبلغ نهایی:</span>
+                        <div><span class="text-[14px] font-black text-gray-800" id="calcTotal">0</span><span class="mr-2 text-gray-300 text-[14px]">ریال</span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-6">
+                <button type="submit" form="ptForm" id="ptSubmitBtn" class="w-full py-3.5 rounded-md font-bold text-md text-white transition">ثبت</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <!-- MODAL: "Add New Transaction" -->
+
+    <!-- مودال ریز معاملات -->
+    <div id="historyModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm transition-opacity" onclick="closeHistoryModal()"></div>
+        <div class="relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[70vh]">
+            <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50"><h3 class="font-black text-gray-800 text-sm">ریز معاملات <span id="histSymbol" class="text-[#5E2BFF]"></span></h3><button onclick="closeHistoryModal()" class="text-gray-400 hover:text-red-500">✕</button></div>
+            <div class="flex-1 overflow-y-auto p-0"><table class="w-full text-right chic-table"><thead class="bg-gray-50 sticky top-0 shadow-sm"><tr><th class="text-center w-[10%]">نوع</th><th class="text-center w-[10%]">تعداد</th><th class="text-center w-[15%]">قیمت واحد <span class="text-[9px] font-normal text-gray-400">(ریال)</span></th><th class="text-center w-[15%]">ارزش معامله <span class="text-[9px] font-normal text-gray-400">(سهام)</span></th><th class="text-center w-[15%] bg-yellow-50/50">گردش نقد <span class="text-[9px] font-normal text-gray-400">(واریز/برداشت)</span></th><th class="text-center w-[15%]">تاریخ</th><th class="text-center w-[10%]">عملیات</th></tr></thead><tbody id="histBody" class="text-sm divide-y divide-gray-100"></tbody></table></div>
+        </div>
+    </div>
+
+    <!-- مودال حذف -->
+    <div id="deleteTransModal" class="fixed inset-0 z-[80] hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity" onclick="closeDeleteTransModal()"></div>
+        <div class="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl p-6 transform transition-all scale-100">
+            <div class="text-center"><div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4"><svg class="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg></div><h3 class="text-lg font-black text-gray-800 mb-2">حذف تراکنش</h3><p class="text-xs text-gray-500 mb-6 leading-relaxed">آیا از حذف این تراکنش اطمینان دارید؟<br>این عملیات غیرقابل بازگشت است.</p><div class="flex gap-3"><button onclick="closeDeleteTransModal()" class="flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 font-bold text-xs hover:bg-gray-50 transition">انصراف</button><button onclick="confirmDeleteTrans()" class="flex-1 py-3 rounded-xl bg-red-500 text-white font-bold text-xs hover:bg-red-600 transition shadow-lg shadow-red-200">بله، حذف شود</button></div></div>
+        </div>
+    </div>
+
+    <!-- مودال ویرایش تراکنش -->
+    <div id="editTransModal" class="fixed inset-0 z-[70] hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity" onclick="closeEditTransModal()"></div>
+        <div class="relative w-full max-w-sm bg-white rounded-xl shadow-2xl p-6">
+            <h3 class="font-black text-gray-800 mb-4">ویرایش تراکنش</h3>
+            <form method="POST" action="/transaction/edit">
+                <input type="hidden" name="trans_id" id="etId">
+                <div class="space-y-3">
+                    <div><label class="text-[10px] font-bold text-gray-400">نوع</label><select name="type" id="etType" class="w-full p-2 border rounded-lg text-sm"><option value="buy">خرید</option><option value="sell">فروش</option><option value="deposit">واریز</option><option value="withdraw">برداشت</option></select></div>
+                    <div><label class="text-[10px] font-bold text-gray-400">تعداد</label><input type="text" name="quantity" id="etQty" class="w-full p-2 border rounded-lg text-sm money-input"></div>
+                    <div><label class="text-[10px] font-bold text-gray-400">قیمت (ریال)</label><input type="text" name="price" id="etPrice" class="w-full p-2 border rounded-lg text-sm money-input"></div>
+                    <div><label class="text-[10px] font-bold text-gray-400">تاریخ</label><input type="date" name="date" id="etDate" class="w-full p-2 border rounded-lg text-sm dir-ltr"></div>
+                </div>
+                <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg font-bold text-sm mt-4 hover:bg-blue-700">ذخیره اصلاحات</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- مودال تارگت -->
+    <div id="targetModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm transition-opacity" onclick="document.getElementById('targetModal').classList.add('hidden')"></div>
+        <div class="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+            <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50"><h3 class="font-black text-gray-800 text-sm">نمادهای پیشنهادی مدل <span class="text-theme">{{ my_portfolio.info.risk_level }}</span></h3><button onclick="document.getElementById('targetModal').classList.add('hidden')" class="text-gray-400 hover:text-red-500">✕</button></div>
+            <div class="flex-1 overflow-y-auto p-0"><table class="w-full text-right chic-table"><thead class="bg-gray-50 sticky top-0 shadow-sm"><tr><th class="text-center">نماد</th><th class="text-center">قیمت روز</th><th class="text-center">وزن هدف</th><th class="text-center text-green-600">خرید</th><th class="text-center text-blue-600">فروش</th><th class="text-center text-red-500">حد ضرر</th></tr></thead><tbody class="text-sm divide-y divide-gray-100">{% if my_portfolio.target_assets %}{% for t in my_portfolio.target_assets %}<tr class="hover:bg-gray-50 transition"><td class="text-center font-bold text-gray-800">{{ t.symbol }}</td><td class="text-center font-mono text-gray-500 text-xs">{{ t.last_price | currency | persian_num }}</td><td class="text-center font-bold text-theme">%{{ t.target_weight | persian_num }}</td><td class="text-center text-xs text-green-600">{{ t.target_short | currency | persian_num }}</td><td class="text-center text-xs text-blue-600">{{ t.target_long | currency | persian_num }}</td><td class="text-center text-xs text-red-500">{{ t.stop_loss | currency | persian_num }}</td></tr>{% endfor %}{% else %}<tr><td colspan="6" class="text-center py-8 text-gray-400 text-xs">هنوز نمادی برای این مدل تعریف نشده است.</td></tr>{% endif %}</tbody></table></div>
+        </div>
+    </div>
+
+        <!-- Test Stress-->
+        <!-- مودال تست استرس (طرح دو ستونی) -->
+    <div id="stressModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 backdrop-blur-sm transition-opacity" onclick="closeStressModal()"></div>
+        <div class="relative w-full max-w-4xl bg-white rounded-2xl shadow-lg border border-gray-200/80 flex flex-col max-h-[90vh]">
+            
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-gray-100 bg-white rounded-2xl flex justify-between items-center shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-red-50 text-red-500 flex items-center justify-center border border-red-100">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>
+                    </div>
+                    <div class="flex flex-row items-center">
+                        <h3 class="font-bold text-gray-800 text-base">شبیه‌سازی بحران</h3>
+                        <p class="text-sm font-medium text-gray-400 mr-2">| تأثیر سناریوهای مختلف بر ارزش دارایی</p>
+                    </div>
+                </div>
+                <button onclick="closeStressModal()" class="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+
+            <!-- Two-Column Body -->
+            <div class="flex-1 flex overflow-hidden">
+                <!-- Left Column (Results) -->
+                <div class="w-2/4 bg-slate-50/70 border-l rounded-2xl border-gray-100 p-6 flex flex-col justify-between">
+                    <div>
+                        <h4 class="font-bold text-gray-700 text-sm mb-4">نتیجه شبیه‌سازی</h4>
+                        <div id="stressResult" class="hidden animation-fade-in space-y-4">
+                            <div class="flex flex-row p-3 text-center border border-gray-100 justify-between">
+                                <span class="text-[14px] text-gray-400">ارزش پیش‌بینی</span>
+                                <span class="font-medium text-gray-600 text-base block" id="stressProjected">---</span>
+                            </div>
+                            <div id="resultBox" class="p-4 rounded-xl flex justify-between items-center border transition-colors">
+                                <div>
+                                    <span class="block text-sm fon-medium mb-3" id="resultLabel">---</span>
+                                    <span class="text-md opacity-70 text-[14px]">میزان تغییر</span>
+                                </div>
+                                <div class="text-left">
+                                    <span class="block text-[14px] font-medium mb-3" id="stressChange">---</span>
+                                    <span class="text-[14px] font-medium opacity-80 dir-ltr block" id="stressChangePct">---</span>
+                                </div>
+                            </div>
+                        </div>
+                         <div id="stressResultPlaceholder" class="p-4 mt-10 text-center text-gray-400 text-[14px]">
+                             <svg class="w-10 h-10 mx-auto text-gray-200 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                            نتایج پس از محاسبه در اینجا نمایش داده می‌شود.
+                        </div>
+                    </div>
+                    <div class="text-[14px] text-gray-400 text-center border-t pt-4">
+                        ارزش فعلی سبد: <strong class="font-medium">{{ my_portfolio.total_value | currency | persian_num }}</strong> ریال
+                    </div>
+                </div>
+
+                <!-- Right Column (Form) -->
+                <div class="w-2/4 p-6 overflow-y-auto custom-scrollbar rounded-2xl">
+                    <form id="stressForm" onsubmit="event.preventDefault(); runStressTest();">
+                        <div class="space-y-5">
+                            {% for sec in my_portfolio.sectors if sec.name not in ['Cash', 'نقدینگی'] %}
+                            <div class="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+                                <div class="flex justify-between items-center mb-3">
+                                    <span class="text-sm font-bold text-gray-700">{{ sec.name }}</span>
+                                    <span class="text-sm font-bold text-indigo-600 dir-ltr" id="val_{{ sec.name }}">-۱۰٪</span>
+                                </div>
+                                <div class="relative h-6 flex items-center">
+                                    <input type="range" name="shock_{{ sec.name }}" min="-50" max="50" step="5" value="-10" 
+                                        class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                                        style="direction: ltr;"
+                                        oninput="document.getElementById('val_{{ sec.name }}').innerText = (this.value > 0 ? '+' : '') + toPersianNum(this.value) + '%'">
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/jalaali-js/dist/jalaali.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    const portfolioId = {{ my_portfolio.info.id }};
+    const marketSymbols = [
+        {% for item in market_data %}
+        { 
+            symbol: "{{ item.symbol }}", 
+            name: "{{ item.company_name }}", 
+            type: "{{ item.asset_type }}",
+            market: "{{ item.market_type }}" // <--- این خط جدید اضافه شد
+        },
+        {% endfor %}
+    ];
+    const RATES = { 'Stock': { 'buy': 0.003712, 'sell': 0.0088 }, 'Gold': { 'buy': 0.0015, 'sell': 0.0015 }, 'Fixed': { 'buy': 0.0007, 'sell': 0.0007 }, 'Cash': { 'buy': 0, 'sell': 0, 'deposit': 0, 'withdraw': 0 } };
+
+    function normalizePersian(str) { if (!str) return ""; return str.toString().replace(/ي/g, "ی").replace(/ك/g, "ک"); }
+    function formatNumber(num) { return Math.floor(num).toLocaleString('en-US'); }
+    function formatToJalali(dateStr) { if (!dateStr) return '-'; try { const parts = dateStr.split('-'); if(parts.length !== 3) return dateStr; const j = jalaali.toJalaali(parseInt(parts[0]), parseInt(parts[1]), parseInt(parts[2])); return toPersianNum(`${j.jy}/${String(j.jm).padStart(2,'0')}/${String(j.jd).padStart(2,'0')}`); } catch(e) { return dateStr; } }
+    
+    // --- مدیریت مودال‌ها و چارت ---
+    function openTransactionModal() { openAddModal(); }
+    function openAddModal() { document.getElementById('addTransactionModal').classList.remove('hidden'); initPtDatepicker(); const now = new Date(); const jNow = jalaali.toJalaali(now.getFullYear(), now.getMonth() + 1, now.getDate()); document.getElementById('ptDateInput').value = now.toISOString().split('T')[0]; document.getElementById('ptDateDisplay').value = toPersianNum(`${jNow.jy}/${String(jNow.jm).padStart(2,'0')}/${String(jNow.jd).padStart(2,'0')}`); switchPtMode('trade'); }
+        function closeAddModal() {
+        // 1. مخفی کردن مودال
+        document.getElementById('addTransactionModal').classList.add('hidden');
+        
+        // 2. ریست کردن تمام فیلدهای ورودی فرم
+        document.getElementById('ptForm').reset();
+        
+        // 3. صفر کردن مقادیر محاسباتی (پیش‌فاکتور)
+        document.getElementById('calcBaseVal').innerText = "0";
+        document.getElementById('calcComm').innerText = "0";
+        document.getElementById('calcTotal').innerText = "0";
+        
+        // 4. بازگرداندن تب‌ها به حالت پیش‌فرض (تب معامله)
+        switchPtMode('trade');
+        
+        // 5. پاک کردن پیشنهادات جستجو (اگر باز مانده باشد)
+        const suggestions = document.querySelector('.suggestions-list');
+        if(suggestions) suggestions.classList.remove('active');
+        
+        // 6. ریست کردن فیلدهای مخفی مهم
+        document.getElementById('ptAssetClass').value = 'Stock';
+        document.getElementById('ptMarketType').value = 'TSE';
+    }
+
+    
+    function validatePtForm() { const mode = document.getElementById('ptActionMode').value; if (mode === 'trade') { const sym = document.getElementById('ptSymbol').value; if (!sym) { alert("لطفاً نام نماد را وارد کنید."); return false; } } return true; }
+    
+    function calcTransDetails() { 
+        const mode = document.getElementById('ptActionMode').value; 
+        
+        if (mode === 'trade') { 
+            const qty = cleanNumber(document.getElementById('ptQty').value); 
+            const price = cleanNumber(document.getElementById('ptPrice').value); 
+            const type = document.querySelector('input[name="type"]:checked')?.value || 'buy'; 
+            const assetClass = document.getElementById('ptAssetClass').value || 'Stock'; 
+            const marketType = document.getElementById('ptMarketType').value || 'TSE'; // دریافت بازار
+
+            // >>> استفاده از موتور مرکزی <<<
+            const result = FinancialCore.calculate(price, qty, type, assetClass, marketType);
+
+            document.getElementById('calcBaseVal').innerText = formatLargeNumber(result.baseValue); 
+            document.getElementById('calcComm').innerText = formatLargeNumber(result.commission); 
+            document.getElementById('calcTotal').innerText = formatLargeNumber(result.finalAmount); 
+        } else { 
+            // حالت واریز/برداشت (بدون کارمزد)
+            const amount = cleanNumber(document.getElementById('ptAmountCash').value); 
+            document.getElementById('calcBaseVal').innerText = formatLargeNumber(amount); 
+            document.getElementById('calcComm').innerText = "-"; 
+            document.getElementById('calcTotal').innerText = formatLargeNumber(amount); 
+        } 
+    }
+
+    
+    function switchPtMode(mode) { document.getElementById('ptActionMode').value = mode; const t = document.getElementById('pt-panel-trade'); const c = document.getElementById('pt-panel-cash'); const bt = document.getElementById('pt-btn-trade'); const bc = document.getElementById('pt-btn-cash'); if (mode === 'trade') { t.classList.remove('hidden'); c.classList.add('hidden'); bt.className = "flex-1 py-2.5 rounded-lg text-xs font-bold transition shadow-sm bg-white text-[#5E2BFF]"; bc.className = "flex-1 py-2.5 rounded-lg text-xs font-bold transition text-gray-500 hover:text-gray-700 hover:bg-gray-200/50"; } else { t.classList.add('hidden'); c.classList.remove('hidden'); bc.className = "flex-1 py-2.5 rounded-lg text-xs font-bold transition shadow-sm bg-white text-[#5E2BFF]"; bt.className = "flex-1 py-2.5 rounded-lg text-xs font-bold transition text-gray-500 hover:text-gray-700 hover:bg-gray-200/50"; } updatePtBtn(); calcTransDetails(); }
+    
+    function updatePtBtn() { const mode = document.getElementById('ptActionMode').value; const btn = document.getElementById('ptSubmitBtn'); if (!btn) return; if (mode === 'trade') { const type = document.querySelector('input[name="type"]:checked')?.value || 'buy'; if (type === 'buy') { btn.innerHTML = "<span>ثبت تراکنش خرید</span>"; btn.className = "w-full bg-teal-500 hover:bg-teal-600 text-white py-4 rounded-md font-medium text-md transition transform active:scale-95 flex items-center justify-center gap-2"; } else { btn.innerHTML = "<span>ثبت تراکنش فروش</span>"; btn.className = "w-full bg-rose-500 hover:bg-rose-600 text-white py-4 rounded-md font-medium text-md transition transform active:scale-95 flex items-center justify-center gap-2"; } } else { const type = document.querySelector('input[name="type_cash"]:checked')?.value || 'deposit'; if (type === 'deposit') { btn.innerHTML = "<span>ثبت واریز وجه</span>"; btn.className = "w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-md font-medium text-md transition transform active:scale-95 flex items-center justify-center gap-2"; } else { btn.innerHTML = "<span>ثبت برداشت وجه</span>"; btn.className = "w-full bg-orange-500 hover:bg-orange-600 text-white py-4 rounded-md font-medium text-md transition transform active:scale-95 flex items-center justify-center gap-2"; } } }
+    
+    
+    // ریز معاملات (تاریخچه سهم) - با ۴ ستون مجزا
+    async function openHistoryModal(symbol) {
+        document.getElementById('historyModal').classList.remove('hidden');
+        document.getElementById('histSymbol').innerText = symbol;
+        const tbody = document.getElementById('histBody');
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-400">در حال دریافت...</td></tr>';
+        try {
+            const res = await fetch(`/api/portfolio/${portfolioId}/transactions/${encodeURIComponent(symbol)}`);
+            const data = await res.json();
+            if (data.transactions && data.transactions.length > 0) {
+                tbody.innerHTML = '';
+                data.transactions.forEach(t => {
+                    const row = document.createElement('tr'); row.className = "hover:bg-gray-50";
+                    let typeClass = '', typeName = '';
+                    if (t.transaction_type === 'buy') { typeClass='text-teal-600 bg-teal-50'; typeName='خرید'; }
+                    else if (t.transaction_type === 'sell') { typeClass='text-rose-500 bg-rose-50'; typeName='فروش'; }
+                    
+                    let qtyDisplay = '-', priceDisplay = '-', tradeValDisplay = '-', cashDisplay = '-';
+                    
+                    if(t.transaction_type === 'buy' || t.transaction_type === 'sell') {
+                        qtyDisplay = toPersianNum(parseInt(t.quantity).toLocaleString());
+                        priceDisplay = toPersianNum(parseInt(t.price).toLocaleString());
+                        tradeValDisplay = toPersianNum(parseInt(t.amount).toLocaleString());
+                    } else {
+                        // برای حالتی که شاید سود نقدی باشد
+                        cashDisplay = toPersianNum(parseInt(t.amount || t.price).toLocaleString());
+                    }
+
+                    row.innerHTML = `
+                        <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${typeClass}">${typeName}</span></td>
+                        <td class="p-3 text-center font-bold text-gray-700">${qtyDisplay}</td>
+                        <td class="p-3 text-center font-mono text-gray-500">${priceDisplay}</td>
+                        <td class="p-3 text-center font-black text-[#1E293B]">${tradeValDisplay}</td>
+                        <td class="p-3 text-center bg-yellow-50/30 font-bold">${cashDisplay}</td>
+                        <td class="p-3 text-center text-xs text-gray-400 dir-ltr">${formatToJalali(t.date)}</td>
+                        <td class="p-3 text-center flex justify-center gap-2">
+                            <button onclick="openEditTransModal(${t.id}, '${t.transaction_type}', ${t.quantity}, ${t.price}, '${t.date}')" class="text-blue-400 hover:text-blue-600 transition">✎</button>
+                            <button onclick="askDeleteTransaction(${t.id})" class="text-red-300 hover:text-red-500 transition">✕</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } else { tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-400">هیچ تراکنشی یافت نشد.</td></tr>'; }
+        } catch(e) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-red-400">خطا در دریافت</td></tr>'; }
+    }
+    function closeHistoryModal() { document.getElementById('historyModal').classList.add('hidden'); }
+
+    let transIdToDelete = null;
+    function askDeleteTransaction(id) { transIdToDelete = id; document.getElementById('deleteTransModal').classList.remove('hidden'); }
+    function closeDeleteTransModal() { document.getElementById('deleteTransModal').classList.add('hidden'); transIdToDelete = null; }
+    function confirmDeleteTrans() { if (transIdToDelete) window.location.href = `/transaction/delete/${transIdToDelete}`; }
+    function openEditTransModal(id, type, qty, price, date) { document.getElementById('editTransModal').classList.remove('hidden'); document.getElementById('etId').value = id; document.getElementById('etType').value = type; document.getElementById('etQty').value = formatNumber(qty); document.getElementById('etPrice').value = formatNumber(price); document.getElementById('etDate').value = date; }
+    function closeEditTransModal() { document.getElementById('editTransModal').classList.add('hidden'); }
+
+    function changePtMonth(offset) {
+        qMonth += offset;
+        if(qMonth > 12) { qMonth = 1; qYear++; }
+        else if(qMonth < 1) { qMonth = 12; qYear--; }
+        renderPtCalendar();
+    }
+    
+    function renderPtCalendar() {
+        renderCalendar('pt-days', qYear, qMonth, 'ptDateDisplay', 'ptDateInput', 'datepicker-pt', 'ptMonthLabel');
+    }
+    document.addEventListener('click', (e) => { const p = document.getElementById('datepicker-pt'); const i = document.getElementById('ptDateDisplay'); if(p && !p.contains(e.target) && e.target !== i) p.classList.add('hidden'); });
+
+    document.addEventListener('DOMContentLoaded', () => {
+
+        // >>> راه‌اندازی سیستم جستجوی جدید <<<
+    initGlobalAutocomplete('ptSymbol', marketSymbols, function(selectedItem) {
+        // 1. تشخیص نوع دارایی (ETF یا Stock)
+        let at = 'Stock';
+        if (selectedItem.type && (selectedItem.type.includes('Gold') || selectedItem.type.includes('طلا'))) at = 'Gold';
+        else if (selectedItem.type && (selectedItem.type.includes('Fixed') || selectedItem.type.includes('ثابت'))) at = 'Fixed';
+        else if (selectedItem.name.includes('صندوق')) at = 'ETF_Equity'; // تشخیص ساده صندوق سهامی
+        
+        document.getElementById('ptAssetClass').value = at;
+
+        // 2. تنظیم نوع بازار (TSE/IFB) از دیتابیس
+        // اگر در دیتابیس null بود، پیش‌فرض TSE
+        const mkt = selectedItem.market ? selectedItem.market : 'TSE';
+        document.getElementById('ptMarketType').value = mkt;
+
+        // 3. محاسبه
+        calcTransDetails();
+    });
+
+
+        Chart.defaults.font.family = "'Yekan', sans-serif";
+        Chart.defaults.color = '#64748b'; // Using a standard slate color
+        Chart.defaults.plugins.tooltip.rtl = true;
+        try {
+            const sectorData = {{ my_portfolio.sectors | tojson | safe }} || [];
+            if (sectorData.length > 0) {
+                const ctx = document.getElementById('sectorChart').getContext('2d');
+                const labelMap = { 'Stock': 'سهام', 'Gold': 'طلا', 'Fixed': 'درآمد ثابت', 'Cash': 'نقدینگی' };
+                const labels = sectorData.map(i => labelMap[i.name] || i.name);
+                const rawValues = sectorData.map(i => i.value);
+                const dataValues = rawValues.map(v => Math.abs(v)); 
+                const colors = ['#5E2BFF', '#F59E0B', '#10B981', '#EF4444', '#3B82F6'];
+
+                new Chart(ctx, { 
+                    type: 'doughnut', 
+                    data: { 
+                        labels: labels, 
+                        datasets: [{ 
+                            data: dataValues, 
+                            backgroundColor: colors, 
+                            borderWidth: 0, 
+                            borderRadius: 6,         // Smoother curvature for slices
+                            cutout: '90%'            // Slightly thicker slices for better visibility
+                        }] 
+                    }, 
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: false, 
+                        plugins: { 
+                            legend: { display: false }, 
+                            tooltip: { 
+                                enabled: true, 
+                                backgroundColor: 'rgba(30, 41, 59, 0.95)',
+                                titleFont: { family: 'Yekan', size: 12 }, // Smaller title font
+                                bodyFont: { family: 'Yekan', size: 12 },
+                                padding: 8,                               // Compact padding
+                                cornerRadius: 6,
+                                displayColors: false, 
+                                callbacks: { 
+                                    // Concise tooltip showing name and percentage
+                                    label: function(context) { 
+                                        let label = context.label || '';
+                                        let value = context.parsed;
+                                        let total = context.chart.getDatasetMeta(0).total;
+                                        let percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                        return `${label}: %${toPersianNum(percentage)}`;
+                                    } 
+                                } 
+                            } 
+                        }, 
+                        animation: { animateScale: true, animateRotate: true } 
+                    } 
+                });
+
+
+                const legendContainer = document.getElementById('chartLegend');
+                legendContainer.innerHTML = ''; // Clear previous legend
+                let total = dataValues.reduce((a, b) => a + b, 0);
+
+                sectorData.forEach((item, index) => { 
+                    let val = item.value; 
+                    let pct = total > 0 ? ((Math.abs(val) / total) * 100).toFixed(1) : 0; 
+                    let label = labelMap[item.name] || item.name; 
+                    let color = colors[index % colors.length]; 
+                    let valColorClass = val < 0 ? 'text-red-500' : 'text-gray-800'; 
+                    let bgClass = val < 0 ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-600'; 
+                    const row = document.createElement('div'); 
+                    row.className = "flex justify-between items-center text-sm p-2 rounded-lg hover:bg-gray-50/80 transition"; 
+                    row.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <span class="w-3 h-3 rounded-full" style="background-color: ${color};"></span>
+                            <span class="text-gray-500 font-medium">${label}</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="font-medium tracking-tight ${valColorClass}">${toPersianNum(parseInt(val).toLocaleString())}</span>
+                            <span class="px-2 py-1 rounded-md text-xs font-medium min-w-[45px] text-center ${bgClass}">%${toPersianNum(pct)}</span>
+                        </div>`; 
+                    legendContainer.appendChild(row); 
+                });
+            } else { 
+                document.getElementById('chartLegend').innerHTML = '<p class="text-center text-sm text-gray-400 py-8">داده‌ای برای نمایش وجود ندارد.</p>'; 
+            }
+        } catch(e) { 
+            console.error("Chart Error:", e); 
+        }
+    })  ;
+
+    // --- New Draggable Modal Logic ---
+    const dragPanel = document.getElementById('draggablePanel');
+    const dragHandle = document.getElementById('dragHandle');
+    
+    let isDragging = false;
+    let startX, startY, initialX, initialY;
+
+    if (dragHandle) {
+        dragHandle.addEventListener('mousedown', function (e) {
+            e.preventDefault();
+            isDragging = true;
+
+            const rect = dragPanel.getBoundingClientRect();
+            initialX = rect.left;
+            initialY = rect.top;
+
+            startX = e.clientX;
+            startY = e.clientY;
+            
+            // Apply current visual position and remove transform to prevent jump
+            dragPanel.style.left = `${initialX}px`;
+            dragPanel.style.top = `${initialY}px`;
+            dragPanel.style.transform = 'none';
+
+            document.addEventListener('mousemove', onDrag);
+            document.addEventListener('mouseup', onStopDrag);
+        });
+    }
+
+    function onDrag(e) {
+        if (!isDragging) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        let newX = initialX + dx;
+        let newY = initialY + dy;
+
+        // Constrain to viewport
+        const vw = document.documentElement.clientWidth;
+        const vh = document.documentElement.clientHeight;
+        newX = Math.max(0, Math.min(newX, vw - dragPanel.offsetWidth));
+        newY = Math.max(0, Math.min(newY, vh - dragPanel.offsetHeight));
+
+        dragPanel.style.left = `${newX}px`;
+        dragPanel.style.top = `${newY}px`;
+        // Remove transform after first drag for smooth positioning
+        dragPanel.style.transform = 'none'; 
+    }
+
+    function onStopDrag() {
+        isDragging = false;
+        document.removeEventListener('mousemove', onDrag);
+        document.removeEventListener('mouseup', onStopDrag);
+    }
+
+        // Smart Insights Toggle Logic
+    function toggleInsights() {
+        const menu = document.getElementById('insightsDropdown');
+        const btn = document.getElementById('insightsBtn');
+        
+        if (menu.classList.contains('hidden')) {
+            // Open
+            menu.classList.remove('hidden');
+            btn.classList.add('border-yellow-500', 'text-yellow-600', 'bg-yellow-50');
+        } else {
+            // Close
+            menu.classList.add('hidden');
+            btn.classList.remove('border-yellow-500', 'text-yellow-600', 'bg-yellow-50');
+        }
+    }
+
+    // Close on outside click
+    document.addEventListener('click', function(e) {
+        const menu = document.getElementById('insightsDropdown');
+        const btn = document.getElementById('insightsBtn');
+        if (!menu || !btn) return;
+        
+        if (!menu.contains(e.target) && !btn.contains(e.target)) {
+            menu.classList.add('hidden');
+            btn.classList.remove('border-yellow-500', 'text-yellow-600', 'bg-yellow-50');
+        }
+    });
+
+        // Risk Control Toggle Logic
+    function toggleRisk() {
+        const menu = document.getElementById('riskDropdown');
+        const btn = document.getElementById('riskBtn');
+        const insightsMenu = document.getElementById('insightsDropdown'); // Close other menu
+        
+        if (insightsMenu) {
+            insightsMenu.classList.add('hidden');
+            document.getElementById('insightsBtn')?.classList.remove('border-yellow-500', 'text-yellow-600', 'bg-yellow-50');
+        }
+
+        if (menu.classList.contains('hidden')) {
+            // Open
+            menu.classList.remove('hidden');
+            btn.classList.add('border-red-500', 'text-red-600', 'bg-red-50');
+        } else {
+            // Close
+            menu.classList.add('hidden');
+            btn.classList.remove('border-red-500', 'text-red-600', 'bg-red-50');
+        }
+    }
+
+    // Update global click listener to handle both menus
+    document.addEventListener('click', function(e) {
+        // ... (existing insights logic) ...
+        
+        const riskMenu = document.getElementById('riskDropdown');
+        const riskBtn = document.getElementById('riskBtn');
+        
+        if (riskMenu && riskBtn && !riskMenu.contains(e.target) && !riskBtn.contains(e.target)) {
+            riskMenu.classList.add('hidden');
+            riskBtn.classList.remove('border-red-500', 'text-red-600', 'bg-red-50');
+        }
+    });
+
+
+    // --- START: FULLY CORRECTED STRESS TEST SCRIPT ---
+    
+    // Debounce timer to prevent API spam on slider move
+    let stressDebounceTimer;
+
+    // Static mapping from English keys (used in HTML form) to Persian keys (expected by API)
+    const STRESS_TEST_KEY_MAP = {
+        'Stock': 'سهام',
+        'Gold': 'طلا',
+        'Fixed': 'درآمد ثابت',
+        'سهام': 'سهام',    // Added for robustness in case backend is fixed
+        'طلا': 'طلا',        // Added for robustness
+        'درآمد ثابت': 'درآمد ثابت' // Added for robustness
+    };
+
+    // Main function to run the calculation
+    async function runStressTest() {
+        const form = document.getElementById('stressForm');
+        const resultSection = document.getElementById('stressResult');
+        const placeholder = document.getElementById('stressResultPlaceholder');
+        if (!form || !resultSection) return;
+
+        // Show loading state
+        placeholder.innerHTML = '<span class="text-xs text-gray-400">در حال محاسبه...</span>';
+        placeholder.classList.remove('hidden');
+        resultSection.classList.add('hidden');
+
+        const formData = new FormData(form);
+        const scenarioData = {};
+        
+        // Build the JSON payload with correct Persian keys
+        for (let [key, value] of formData.entries()) {
+            const rawKey = key.replace('shock_', ''); // e.g., "Stock"
+            const backendKey = STRESS_TEST_KEY_MAP[rawKey]; // e.g., "سهام"
+            if (backendKey) {
+                scenarioData[backendKey] = parseFloat(value) || 0;
+            }
+        }
+
+        try {
+            const response = await fetch(`/api/portfolio/${portfolioId}/stress_test`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(scenarioData)
+            });
+
+            if (!response.ok) throw new Error(`Server error: ${response.status}`);
+            
+            const result = await response.json();
+            if (result.error) throw new Error(`API Error: ${result.error}`);
+            
+            updateStressUI(result);
+
+        } catch (error) {
+            console.error("Stress test failed:", error);
+            placeholder.innerHTML = '<span class="text-xs text-red-500">خطا در ارتباط با سرور</span>';
+        }
+    }
+
+    // Function to update the UI with results
+    function updateStressUI(result) {
+        const resultSection = document.getElementById('stressResult');
+        const placeholder = document.getElementById('stressResultPlaceholder');
+        const resultBox = document.getElementById('resultBox');
+        
+        document.getElementById('stressProjected').innerText = toPersianNum(parseInt(result.projected_equity).toLocaleString()) + ' ریال';
+        document.getElementById('stressChange').innerText = (result.change_amount >= 0 ? '+' : '') + toPersianNum(parseInt(result.change_amount).toLocaleString());
+        document.getElementById('stressChangePct').innerText = '%' + toPersianNum(Math.abs(result.change_pct).toFixed(1));
+        
+        if (result.change_amount >= 0) {
+            resultBox.className = "p-4 rounded-xl flex justify-between items-center border transition-colors bg-green-50 border-green-200 text-green-800";
+            document.getElementById('resultLabel').innerText = "رشد پیش‌بینی شده";
+        } else {
+            resultBox.className = "p-4 rounded-xl flex justify-between items-center border transition-colors bg-red-50 border-red-200 text-red-800";
+            document.getElementById('resultLabel').innerText = "کاهش پیش‌بینی شده";
+        }
+        
+        placeholder.classList.add('hidden');
+        resultSection.classList.remove('hidden');
+    }
+
+    // Function to open the modal
+    function openStressModal() {
+        document.getElementById('stressModal').classList.remove('hidden');
+    }
+
+    // Function to close and fully reset the modal state
+    function closeStressModal() {
+        const modal = document.getElementById('stressModal');
+        const form = document.getElementById('stressForm');
+        
+        if (modal) modal.classList.add('hidden');
+        
+        if (form) {
+            form.reset();
+            const sliders = form.querySelectorAll('input[type="range"]');
+            sliders.forEach(slider => {
+                const name = slider.name.replace('shock_', '');
+                const label = document.getElementById(`val_${name}`);
+                if (label) {
+                    const defaultValue = slider.getAttribute('value');
+                    label.innerText = (defaultValue >= 0 ? '+' : '') + toPersianNum(defaultValue) + '%';
+                }
+            });
+        }
+        
+        const placeholder = document.getElementById('stressResultPlaceholder');
+        document.getElementById('stressResult').classList.add('hidden');
+        placeholder.classList.remove('hidden');
+        placeholder.innerHTML = `
+            <svg class="w-10 h-10 mx-auto text-gray-200 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+            نتایج پس از محاسبه در اینجا نمایش داده می‌شود.
+        `;
+    }
+
+    // Attach event listeners after the DOM is fully loaded
+    document.addEventListener('DOMContentLoaded', () => {
+        const form = document.getElementById('stressForm');
+        if (form) {
+            const sliders = form.querySelectorAll('input[type="range"]');
+            sliders.forEach(slider => {
+                slider.addEventListener('input', () => {
+                    // Update label text instantly
+                    const name = slider.name.replace('shock_', '');
+                    const label = document.getElementById(`val_${name}`);
+                    if (label) {
+                        label.innerText = (slider.value >= 0 ? '+' : '') + toPersianNum(slider.value) + '%';
+                    }
+                    
+                    // Trigger debounced calculation
+                    clearTimeout(stressDebounceTimer);
+                    stressDebounceTimer = setTimeout(runStressTest, 400);
+                });
+            });
+        }
+    });
+
+    // --- END: FULLY CORRECTED STRESS TEST SCRIPT ---
+
+</script>
+{% endblock %}
+

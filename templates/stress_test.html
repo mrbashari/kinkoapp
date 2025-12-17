@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>تست استرس (Stress Test)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-50 p-6 md:p-10 text-gray-800">
+
+    <div class="max-w-6xl mx-auto">
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-2xl font-bold flex items-center gap-2 text-red-700">
+                    ⚡ اتاق تست استرس (شبیه‌ساز بحران)
+                </h1>
+                <p class="text-gray-500 mt-1">بررسی تاب‌آوری سبد <span class="font-bold">{{ portfolio.name }}</span> در برابر نوسانات بازار</p>
+            </div>
+            <a href="/portfolio/{{ portfolio.id }}/risk" class="bg-white border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-100 transition text-sm">
+                بازگشت به ریسک
+            </a>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <div class="lg:col-span-1">
+                <div class="bg-white p-6 rounded-2xl shadow-lg border border-gray-200 sticky top-6">
+                    <h3 class="font-bold text-gray-700 mb-6 border-b pb-2">تنظیم شوک‌های بازار</h3>
+                    
+                    <form method="POST">
+                        <div class="space-y-6">
+                            {% for sec in sectors %}
+                            <div>
+                                <div class="flex justify-between mb-2">
+                                    <label class="text-sm font-bold text-gray-600">{{ sec }}</label>
+                                    <span class="text-xs font-mono bg-gray-100 px-2 rounded" id="val_{{ loop.index }}">0%</span>
+                                </div>
+                                <input type="range" name="shock_{{ sec }}" min="-50" max="50" value="0" step="1"
+                                       class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#5E2BFF]"
+                                       oninput="document.getElementById('val_{{ loop.index }}').innerText = this.value + '%'; 
+                                                this.value < 0 ? this.classList.add('accent-red-500') : this.classList.remove('accent-red-500')">
+                                <div class="flex justify-between text-[10px] text-gray-400 mt-1">
+                                    <span>50%- (سقوط)</span>
+                                    <span>50%+ (صعود)</span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mt-8 pt-4 border-t">
+                            <button type="submit" class="w-full bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700 transition shadow-md shadow-red-200 flex justify-center items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" />
+                                </svg>
+                                اجرای شبیه‌سازی
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2">
+                {% if result %}
+                <div class="space-y-6 animate-pulse-once">
+                    
+                    <div class="bg-white rounded-2xl p-6 shadow-sm border-l-4 {{ 'border-red-500' if result.change_amount < 0 else 'border-green-500' }}">
+                        <h2 class="text-lg font-bold text-gray-700 mb-4">نتیجه سناریو</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div>
+                                <div class="text-xs text-gray-400">ارزش فعلی</div>
+                                <div class="text-xl font-bold text-gray-600">{{ result.current_equity | currency }}</div>
+                            </div>
+                            <div>
+                                <div class="text-xs text-gray-400">ارزش پس از شوک</div>
+                                <div class="text-xl font-bold text-gray-800">{{ result.projected_equity | currency }}</div>
+                            </div>
+                            <div>
+                                <div class="text-xs text-gray-400">اثر خالص (P&L)</div>
+                                <div class="text-2xl font-bold dir-ltr text-right {{ 'text-red-600' if result.change_amount < 0 else 'text-green-600' }}">
+                                    %{{ result.change_pct | round(2) }}
+                                </div>
+                                <div class="text-xs {{ 'text-red-500' if result.change_amount < 0 else 'text-green-500' }} dir-ltr text-right">
+                                    {{ result.change_amount | currency }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+                        <div class="p-4 bg-gray-50 border-b font-bold text-gray-700">تأثیر بر دارایی‌ها</div>
+                        <table class="w-full text-right text-sm">
+                            <thead class="text-gray-500">
+                                <tr>
+                                    <th class="p-4">نماد</th>
+                                    <th class="p-4">صنعت</th>
+                                    <th class="p-4">شوک وارده</th>
+                                    <th class="p-4">ارزش جدید</th>
+                                    <th class="p-4">سود/زیان</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y">
+                                {% for item in result.simulated_holdings %}
+                                <tr class="hover:bg-gray-50">
+                                    <td class="p-4 font-bold">{{ item.symbol }}</td>
+                                    <td class="p-4 text-xs text-gray-500">{{ item.sector }}</td>
+                                    <td class="p-4 dir-ltr text-right">
+                                        <span class="px-2 py-1 rounded text-xs font-bold {{ 'bg-red-100 text-red-700' if item.shock < 0 else ( 'bg-green-100 text-green-700' if item.shock > 0 else 'bg-gray-100 text-gray-500') }}">
+                                            {{ item.shock }}%
+                                        </span>
+                                    </td>
+                                    <td class="p-4 text-gray-600">{{ item.new_value | currency }}</td>
+                                    <td class="p-4 font-bold {{ 'text-red-600' if item.impact < 0 else 'text-green-600' }}">
+                                        {{ item.impact | currency }}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+                {% else %}
+                <div class="h-full flex flex-col items-center justify-center text-center p-10 bg-white rounded-2xl border-2 border-dashed border-gray-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20 text-gray-200 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <h3 class="text-xl font-bold text-gray-600">آماده شبیه‌سازی</h3>
+                    <p class="text-gray-400 mt-2 max-w-md">
+                        با استفاده از منوی سمت راست، درصد تغییرات احتمالی هر صنعت را مشخص کنید و دکمه اجرا را بزنید تا تاثیر آن را بر پرتفوی خود ببینید.
+                    </p>
+                </div>
+                {% endif %}
+            </div>
+
+        </div>
+    </div>
+    
+    <style>
+        .animate-pulse-once { animation: pulse-blue 0.5s ease-out; }
+        @keyframes pulse-blue { from { box-shadow: 0 0 0 0 rgba(94, 43, 255, 0.4); } to { box-shadow: 0 0 0 20px rgba(0, 0, 0, 0); } }
+    </style>
+
+</body>
+</html>

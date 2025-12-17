@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}گردش حساب {{ portfolio.name }}{% endblock %}
+
+{% block content %}
+
+    <style>
+        /* استایل‌های اختصاصی جدول */
+        .turnover-table th { font-family: 'Yekan', sans-serif; font-weight: 800; color: #64748b; font-size: 11px; padding: 14px; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0; white-space: nowrap; }
+        .turnover-table td { padding: 12px 14px; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+        .turnover-table tr:last-child td { border-bottom: none; }
+        
+        /* استایل دکمه‌های فیلتر */
+        .filter-btn { padding: 6px 12px; border-radius: 8px; font-size: 11px; font-weight: bold; transition: all 0.2s; border: 1px solid transparent; }
+        .filter-btn.active { background-color: #1e293b; color: white; }
+        .filter-btn.inactive { background-color: white; color: #64748b; border-color: #e2e8f0; }
+        .filter-btn.inactive:hover { border-color: #cbd5e1; color: #334155; }
+    </style>
+
+    <!-- هدر صفحه (اصلاح شده) -->
+    <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+        
+        <!-- عنوان (راست چین) -->
+        <div>
+            <h1 class="text-xl font-black text-gray-800 tracking-tight">گردش حساب <span class="text-[#5E2BFF]">{{ portfolio.name }}</span></h1>
+            <span class="text-[11px] text-gray-400 font-medium">لیست کامل تراکنش‌ها و عملیات مالی</span>
+        </div>
+        
+        <!-- دکمه‌های عملیاتی (چپ چین) -->
+        <div class="flex gap-2 self-end md:self-auto">
+            <!-- دکمه چاپ گزارش -->
+            <a href="{{ url_for('portfolio_history_print', portfolio_id=portfolio.id) }}" target="_blank" class="px-4 py-2 bg-white border border-gray-200 text-gray-600 rounded-xl text-xs font-bold hover:border-[#5E2BFF] hover:text-[#5E2BFF] transition flex items-center gap-2 shadow-sm">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" /></svg>
+                چاپ گزارش
+            </a>
+
+            <!-- دکمه بازگشت -->
+            <a href="/portfolio/{{ portfolio.id }}" class="px-3 py-2 bg-white border border-gray-200 text-gray-400 hover:text-[#5E2BFF] hover:border-[#5E2BFF] transition rounded-xl shadow-sm flex items-center justify-center" title="بازگشت">
+            <svg className="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="6" d="M5 12h14M5 12l4-4m-4 4 4 4"/>
+            </svg>
+
+
+            </a>
+        </div>
+    </div>
+
+    <!-- بدنه اصلی -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-h-[600px]">
+        
+        <!-- نوار ابزار و فیلتر -->
+        <div class="px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4 bg-gray-50/50">
+            <div class="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+                <a href="?type=all" class="filter-btn {{ 'active' if not filters.type or filters.type == 'all' else 'inactive' }}">همه</a>
+                <a href="?type=buy" class="filter-btn {{ 'active' if filters.type == 'buy' else 'inactive' }}">خرید</a>
+                <a href="?type=sell" class="filter-btn {{ 'active' if filters.type == 'sell' else 'inactive' }}">فروش</a>
+                <a href="?type=deposit" class="filter-btn {{ 'active' if filters.type == 'deposit' else 'inactive' }}">واریز</a>
+                <a href="?type=withdraw" class="filter-btn {{ 'active' if filters.type == 'withdraw' else 'inactive' }}">برداشت</a>
+                <a href="?type=dividend" class="filter-btn {{ 'active' if filters.type == 'dividend' else 'inactive' }}">سود نقدی</a>
+            </div>
+        </div>
+
+        <!-- جدول تراکنش‌ها -->
+        <div class="overflow-x-auto flex-1">
+            <table class="w-full text-right turnover-table border-collapse">
+                <thead class="sticky top-0 z-10">
+                    <tr>
+                        <th class="text-center text-[16px] w-[10%]">نوع عملیات</th>
+                        <th class="text-center text-[16px] w-[15%]">شرح / نماد</th>
+                        <th class="text-center text-[16px] w-[15%]">تاریخ</th>
+                        
+                        <!-- ستون‌های تفکیک شده -->
+                        <th class="text-center text-[16px] w-[15%]">تعداد</th>
+                        <th class="text-center text-[16px] w-[15%]">قیمت واحد <span class="text-[12px] text-gray-400">(ریال)</span></th>
+                        <th class="text-center text-[16px] w-[20%]">ارزش کل <span class="text-[12px] text-gray-400">(ریال)</span></th>
+                        
+                        <th class="text-center text-[16px] w-[10%]">عملیات</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50 bg-white">
+                    {% for t in transactions %}
+                    <tr class="hover:bg-blue-50/30 transition group">
+                        
+                        <!-- 1. نوع عملیات -->
+                        <td class="text-center">
+                            {% if t.transaction_type == 'buy' %}
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">خرید</span>
+                            {% elif t.transaction_type == 'sell' %}
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold bg-rose-50 text-rose-600 border border-rose-100">فروش</span>
+                            {% elif t.transaction_type == 'deposit' %}
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold bg-blue-50 text-blue-600 border border-blue-100">واریز</span>
+                            {% elif t.transaction_type == 'withdraw' %}
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold bg-amber-50 text-amber-600 border border-amber-100">برداشت</span>
+                            {% elif t.transaction_type == 'dividend' %}
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold bg-purple-50 text-purple-600 border border-purple-100">سود نقدی</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- 2. شرح / نماد -->
+                        <td class="text-center font-bold text-slate-700">
+                            {% if t.symbol == 'CASH' or t.transaction_type in ['deposit', 'withdraw'] or not t.symbol %}
+                                <span class="text-gray-400 font-medium text-xs">وجه نقد</span>
+                            {% else %}
+                                {{ t.symbol }}
+                            {% endif %}
+                        </td>
+
+                        <!-- 3. تاریخ -->
+                        <td class="text-center text-gray-500 font-medium tracking-wide dir-ltr text-xs">
+                            {{ t.date | jalali | persian_num }}
+                        </td>
+
+                        <!-- 4. تعداد (فقط برای خرید و فروش) -->
+                        <td class="text-center font-bold text-gray-600">
+                            {% if t.transaction_type in ['buy', 'sell'] %}
+                                {{ t.quantity | currency | persian_num }}
+                            {% else %}
+                                <span class="text-gray-300 font-light">-</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- 5. قیمت واحد (فقط برای خرید و فروش) -->
+                        <td class="text-center font-medium text-gray-500 font-mono text-xs">
+                            {% if t.transaction_type in ['buy', 'sell'] %}
+                                {{ t.price | currency | persian_num }}
+                            {% else %}
+                                <span class="text-gray-300 font-light">-</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- 6. ارزش کل -->
+                        <td class="text-center">
+                            {% if t.transaction_type in ['deposit', 'dividend', 'sell'] %}
+                                <span class="font-black text-emerald-600 text-[13px] dir-ltr">+{{ t.amount | currency | persian_num }}</span>
+                            {% else %}
+                                <span class="font-black text-rose-500 text-[13px] dir-ltr">-{{ t.amount | currency | persian_num }}</span>
+                            {% endif %}
+                        </td>
+
+                        <td class="text-center">
+                            <div class="flex items-center justify-center gap-2 opacity-40 group-hover:opacity-100 transition">
+                                <a href="/transaction/delete/{{ t.id }}" onclick="return confirm('آیا از حذف این تراکنش اطمینان دارید؟ تمام محاسبات تغییر خواهد کرد.')" class="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition" title="حذف">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                </a>
+                            </div>
+                        </td>
+
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="p-12 text-center">
+                            <div class="flex flex-col items-center justify-center text-gray-400 gap-3">
+                                <svg class="w-12 h-12 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+                                <span class="text-sm font-medium">هیچ تراکنشی یافت نشد.</span>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- فوتر جدول -->
+        <div class="bg-gray-50 border-t border-gray-200 p-4 flex justify-between items-center text-xs text-gray-500">
+            <span>تعداد رکوردها: {{ transactions|length | persian_num }}</span>
+            <span class="text-[10px]">تاریخ گزارش: {{ none | jalali | persian_num }}</span>
+        </div>
+
+    </div>
+
+{% endblock %}

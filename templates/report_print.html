@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>گزارش عملکرد سبد - {{ portfolio.name }}</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jalaali-js/dist/jalaali.js"></script>
+    
+    <style>
+        /* 1. Typography & Font Import */
+        @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800&display=swap');
+
+        /* 2. CSS Variables for B&W Design */
+        :root {
+            --font-main: 'Vazirmatn', 'Tahoma', sans-serif;
+            --color-text: #111827;      /* Almost black */
+            --color-text-muted: #6b7280; /* Gray for labels */
+            --color-border: #e5e7eb;   /* Light gray for borders */
+            --color-bg-light: #f9fafb; /* Very light gray for backgrounds */
+        }
+
+        /* 3. Base & Print Styles */
+        body { 
+            font-family: var(--font-main); 
+            background-color: #e5e7eb;
+            color: var(--color-text);
+            font-size: 12px;
+            line-height: 1.8;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        @page { 
+            size: A4; 
+            margin: 0; 
+        }
+
+        .report-page {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 2rem auto;
+            background-color: white;
+            padding: 15mm;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        @media print {
+            body { background: white; margin: 0; padding: 0; }
+            .no-print { display: none !important; }
+            .report-page {
+                box-shadow: none !important; 
+                border: none !important; 
+                margin: 0;
+                padding: 12mm;
+            }
+            .stat-card, thead { background-color: var(--color-bg-light) !important; }
+        }
+
+        /* 4. Layout & Component Styles */
+        h1, h2, h3, p { margin: 0; }
+        .tabular-nums { font-variant-numeric: tabular-nums; }
+        .section-break { margin-top: 2rem; }
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--color-border);
+            padding-bottom: 0.75rem;
+        }
+        
+        /* Header & Footer */
+        .report-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            border-bottom: 2px solid var(--color-text);
+            padding-bottom: 1rem;
+            margin-bottom: 2rem;
+        }
+        .report-header h1 { font-size: 1.75rem; font-weight: 800; }
+        .report-header .date { font-size: 0.8rem; font-weight: 700; color: var(--color-text-muted); }
+        
+        .report-footer {
+            margin-top: auto;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--color-border);
+            font-size: 0.75rem;
+            color: #9ca3af;
+            text-align: center;
+        }
+
+        /* Details & Stats Cards */
+        .details-grid, .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+        }
+        .details-grid { background: var(--color-bg-light); padding: 1rem; border-radius: 8px; margin-bottom: 2rem; }
+        .detail-item, .stat-card {
+            padding: 1rem;
+            border-radius: 8px;
+        }
+        .detail-item .label { font-size: 12px; color: var(--color-text-muted); }
+        .detail-item .value { font-size: 13px; font-weight: 700; }
+        
+        .stat-card { background: var(--color-bg-light); }
+        .stat-card .label { font-size: 12px; font-weight: 700; color: var(--color-text-muted); margin-bottom: 0.5rem; }
+        .stat-card .value { font-size: 1.2rem; font-weight: 800; }
+        .stat-card .unit { font-size: 0.8rem; margin-right: 0.25rem; }
+
+        /* Table */
+        .report-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .report-table th, .report-table td { padding: 0.75rem; text-align: center; }
+        .report-table thead { background-color: var(--color-bg-light); }
+        .report-table th { font-weight: 800; border-bottom: 1px solid var(--color-border); }
+        .report-table tbody tr { border-bottom: 1px solid #f3f4f6; }
+        .report-table .align-right { text-align: right; }
+        
+        /* Chart */
+        .chart-container { height: 14rem; position: relative; }
+    </style>
+</head>
+<body>
+
+    <div class="report-page">
+        <!-- 1. Header -->
+        <header class="report-header">
+            <div>
+                <h1>گزارش عملکرد سبد</h1>
+                <p style="font-size: 1rem; font-weight: 700;">{{ portfolio.name }}</p>
+            </div>
+            <div style="text-align: left;">
+                <div class="date">تاریخ گزارش: <span class="tabular-nums" id="reportDate"></span></div>
+            </div>
+        </header>
+
+        <!-- 2. Portfolio Details -->
+        <section class="details-grid">
+            <div class="detail-item"><div class="label">نام مشتری</div><div class="value">{{ portfolio.name }}</div></div>
+            <div class="detail-item"><div class="label">کد ملی</div><div class="value tabular-nums">{{ portfolio.national_id or '---' }}</div></div>
+            <div class="detail-item"><div class="label">تاریخ تحویل</div><div class="value tabular-nums" id="deliveryDate"></div></div>
+            <div class="detail-item"><div class="label">ارزش در زمان تحویل</div><div class="value tabular-nums">{{ portfolio.initial_capital | currency | persian_num }} <span class="unit">ریال</span></div></div>
+        </section>
+
+        <!-- 3. Current Status Summary -->
+        <section class="section-break">
+            <h2 class="section-title">خلاصه وضعیت فعلی</h2>
+            <div class="stats-grid">
+                <div class="stat-card"><div class="label">ارزش فعلی سبد</div><div class="value tabular-nums">{{ data.total_value | currency | persian_num }} <span class="unit">ریال</span></div></div>
+                <div class="stat-card"><div class="label">موجودی نقد</div><div class="value tabular-nums">{{ data.cash_balance | currency | persian_num }} <span class="unit">ریال</span></div></div>
+                <div class="stat-card"><div class="label">بازدهی کل</div><div class="value tabular-nums" style="color: {{ '#334155' if data.benchmark.portfolio_return >= 0 else '#dc2626' }}; direction: ltr;">{{ data.benchmark.portfolio_return | round(2) | persian_num }}%</div></div>
+                <div class="stat-card"><div class="label">شاخص Alpha</div><div class="value tabular-nums" style="color: {{ '#334155' if data.benchmark.alpha >= 0 else '#dc2626' }}; direction: ltr;">{{ '+' if data.benchmark.alpha > 0 else '' }}{{ data.benchmark.alpha | round(2) | persian_num }}%</div></div>
+            </div>
+        </section>
+
+        <!-- 4. Portfolio Manager Performance -->
+        <section class="section-break">
+            <h2 class="section-title">عملکرد معامله‌گر</h2>
+            <div class="stats-grid">
+                <div class="stat-card"><div class="label">تعداد کل معاملات</div><div class="value tabular-nums">{{ perf.total_trades | persian_num }}</div></div>
+                <div class="stat-card"><div class="label">معاملات سودده</div><div class="value tabular-nums">{{ perf.win_count | persian_num }}</div></div>
+                <div class="stat-card"><div class="label">معاملات زیان‌ده</div><div class="value tabular-nums">{{ perf.loss_count | persian_num }}</div></div>
+                <div class="stat-card"><div class="label">نرخ موفقیت</div><div class="value tabular-nums" style="direction: ltr;">{{ perf.win_rate | round(1) | persian_num }}%</div></div>
+            </div>
+        </section>
+
+        <!-- 5. Portfolio Growth Chart -->
+        <section class="section-break">
+            <h2 class="section-title">روند رشد ارزش سبد</h2>
+            <div class="chart-container"><canvas id="growthChart"></canvas></div>
+        </section>
+
+        <!-- 6. Portfolio Table -->
+        <section class="section-break">
+            <h2 class="section-title">جدول دارایی‌های سبد</h2>
+            <div style="border: 1px solid var(--color-border); border-radius: 8px; overflow: hidden;">
+                <table class="report-table">
+                    <thead><tr><th>#</th><th class="align-right">نماد</th><th>تعداد</th><th>ارزش روز (ریال)</th><th>وزن</th><th>سود/زیان</th></tr></thead>
+                    <tbody>
+                        {% for item in data.holdings %}
+                        {% set pnl_pct = ((item.current_value - item.total_cost) / item.total_cost * 100) if item.total_cost > 0 else 0 %}
+                        <tr>
+                            <td class="tabular-nums">{{ loop.index | persian_num }}</td>
+                            <td class="align-right" style="font-weight: 700;">{{ item.symbol }}</td>
+                            <td class="tabular-nums">{{ item.qty | currency | persian_num }}</td>
+                            <td class="tabular-nums" style="font-weight: 700;">{{ item.current_value | currency | persian_num }}</td>
+                            <td class="tabular-nums">%{{ item.weight | round(1) | persian_num }}</td>
+                            <td class="tabular-nums" style="direction: ltr; font-weight: 700; color: {{ '#334155' if pnl_pct >= 0 else '#dc2626' }};">{{ pnl_pct | round(1) | persian_num }}%</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="6" style="padding: 2rem; color: var(--color-text-muted);">سبد سهام خالی است.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 7. Footer -->
+        <footer class="report-footer">
+            <p>این گزارش جهت اطلاع‌رسانی داخلی صادر شده و فاقد ارزش قانونی است.</p>
+        </footer>
+    </div>
+
+    <!-- Print/Close Buttons -->
+    <div class="no-print" style="position: fixed; bottom: 1.5rem; left: 1.5rem; display: flex; gap: 1rem; z-index: 50;">
+        <button onclick="window.close()" style="background-color: var(--color-text); color: white; padding: 0.75rem 1.25rem; border-radius: 8px; border: none; font-family: var(--font-main); font-size: 14px; font-weight: 700; cursor: pointer;">بستن</button>
+        <button onclick="window.print()" style="background-color: #334155; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; border: none; font-family: var(--font-main); font-size: 14px; font-weight: 700; cursor: pointer;">چاپ</button>
+    </div>
+
+    <script>
+        function toPersianNum(num) { return String(num).replace(/\d/g, d => "۰۱۲۳۴۵۶۷۸۹"[d]); }
+
+        // Date Formatting
+        const reportDate = "{{ report_date }}";
+        const deliveryDate = "{{ portfolio.delivery_date }}";
+        if (reportDate) { document.getElementById('reportDate').innerText = toPersianNum(new Date(reportDate).toLocaleDateString('fa-IR')); }
+        if (deliveryDate) { document.getElementById('deliveryDate').innerText = toPersianNum(new Date(deliveryDate).toLocaleDateString('fa-IR')); }
+        
+        // Chart.js Configuration
+        const ctx = document.getElementById('growthChart').getContext('2d');
+        const chartLabels = {{ chart_data.labels | tojson | safe }};
+        const chartValues = {{ chart_data.data | tojson | safe }};
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: chartLabels,
+                datasets: [{
+                    label: 'ارزش دارایی',
+                    data: chartValues,
+                    borderColor: '#111827',
+                    borderWidth: 2,
+                    backgroundColor: 'rgba(17, 24, 39, 0.05)',
+                    fill: true,
+                    pointRadius: 0,
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { font: { family: 'Vazirmatn' }, color: '#9ca3af' } },
+                    y: { position: 'right', grid: { color: '#f3f4f6' }, ticks: { font: { family: 'Vazirmatn' }, color: '#9ca3af', callback: val => toPersianNum(val.toLocaleString('en-US')) } }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

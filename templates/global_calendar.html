@@ -1,0 +1,410 @@
+{% extends "base.html" %}
+
+{% block title %}تقویم بازار{% endblock %}
+
+{% block content %}
+<style>
+    .tab-btn { @apply text-gray-400 border-b-2 border-transparent pb-3 text-sm font-bold transition-all cursor-pointer; }
+    .tab-btn.active { @apply text-[#5E2BFF] border-[#5E2BFF]; }
+    .modal-backdrop { background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); }
+    /* مخفی کردن تب‌ها */
+    .tab-content { display: none; }
+    .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+
+<div class="flex justify-between items-end mb-8">
+    <div>
+        <h1 class="text-2xl font-black text-gray-800 tracking-tight">تقویم بازار</h1>
+        <p class="text-xs text-gray-400 mt-2 font-medium">مدیریت رویدادهای شرکتی و یادداشت‌های شخصی</p>
+    </div>
+    <div class="flex gap-3">
+        <div class="bg-white border border-gray-200 rounded-xl flex items-center p-1 shadow-sm">
+            <button onclick="actions.changeMonth(-1)" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-50 text-gray-500 transition">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+            </button>
+            <span id="currentMonthLabel" class="w-32 text-center text-sm font-bold text-gray-700">...</span>
+            <button onclick="actions.changeMonth(1)" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-50 text-gray-500 transition">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+            </button>
+        </div>
+        <button onclick="openModal()" class="bg-[#5E2BFF] text-white px-5 py-2 rounded-xl text-xs font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-100 flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            رویداد جدید
+        </button>
+    </div>
+</div>
+
+<div class="grid grid-cols-12 gap-6">
+    <div class="col-span-12 lg:col-span-3 order-2 lg:order-1">
+        <div class="flat-card p-5 min-h-[500px]">
+            <h3 id="sidebarTitle" class="text-sm font-black text-gray-800 mb-4 pb-3 border-b border-gray-50">رویدادهای امروز</h3>
+            <div id="sidebarList" class="space-y-3">
+                </div>
+        </div>
+    </div>
+
+    <div class="col-span-12 lg:col-span-9 order-1 lg:order-2">
+        <div class="flat-card overflow-hidden">
+            <div class="grid grid-cols-7 bg-gray-50 border-b border-gray-100">
+                <div class="calendar-header-cell">شنبه</div>
+                <div class="calendar-header-cell">یکشنبه</div>
+                <div class="calendar-header-cell">دوشنبه</div>
+                <div class="calendar-header-cell">سه‌شنبه</div>
+                <div class="calendar-header-cell">چهارشنبه</div>
+                <div class="calendar-header-cell">پنج‌شنبه</div>
+                <div class="calendar-header-cell text-red-400">جمعه</div>
+            </div>
+            <div id="calendarGrid" class="calendar-grid"></div>
+        </div>
+    </div>
+</div>
+
+<div id="eventModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 modal-backdrop transition-opacity" onclick="closeModal()"></div>
+    <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-visible transform transition-all">
+        
+        <div class="px-6 pt-6 pb-2">
+            <h3 class="font-black text-gray-800 text-lg mb-1">افزودن رویداد</h3>
+            <p class="text-[10px] text-gray-400">نوع رویداد را انتخاب کنید</p>
+        </div>
+
+        <div class="flex border-b border-gray-100 px-6 mt-2 gap-6">
+            <button onclick="switchTab('meeting')" id="btn-meeting" class="tab-btn active">مجمع عمومی</button>
+            <button onclick="switchTab('dividend')" id="btn-dividend" class="tab-btn">تقسیم سود</button>
+            <button onclick="switchTab('note')" id="btn-note" class="tab-btn">یادداشت</button>
+        </div>
+
+        <form action="/calendar/global" method="POST" class="p-6">
+            <input type="hidden" name="type" id="eventTypeInput" value="meeting">
+
+            <div id="tab-meeting" class="tab-content active space-y-4">
+                <div class="autocomplete-wrapper">
+                    <label class="block text-[10px] font-bold text-gray-400 mb-1.5">نام نماد</label>
+                    <input type="text" id="symbolInputMeeting" name="symbol_meeting" class="ghost-input w-full bg-gray-50 border border-gray-200 !text-right px-3 py-2.5 h-10" placeholder="جستجوی نماد..." autocomplete="off">
+                    <div class="autocomplete-dropdown custom-scrollbar"></div>
+                </div>
+                
+                <div class="relative">
+                    <label class="block text-[10px] font-bold text-gray-400 mb-1.5">تاریخ برگزاری مجمع</label>
+                    <input type="text" id="dateDisplayMeeting" class="ghost-input w-full bg-gray-50 border border-gray-200 cursor-pointer !text-center px-3 py-2.5 h-10" placeholder="انتخاب تاریخ" readonly onclick="toggleDatepicker('dp-meeting')">
+                    <input type="hidden" name="date_meeting" id="dateInputMeeting">
+                    
+                    <div id="dp-meeting" class="hidden absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-50 p-3">
+                        <div class="flex justify-between items-center mb-2">
+                            <button type="button" onclick="changePickerMonth('meeting', -1)" class="p-1 hover:bg-gray-100 rounded">‹</button>
+                            <span id="dp-label-meeting" class="text-xs font-bold text-gray-700"></span>
+                            <button type="button" onclick="changePickerMonth('meeting', 1)" class="p-1 hover:bg-gray-100 rounded">›</button>
+                        </div>
+                        <div id="dp-grid-meeting" class="grid grid-cols-7 gap-1"></div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-400 mb-1.5">لینک وبینار (اختیاری)</label>
+                    <input type="url" name="url" class="ghost-input w-full bg-gray-50 border border-gray-200 !text-left dir-ltr px-3 py-2.5 h-10" placeholder="https://skyroom.online/...">
+                </div>
+            </div>
+
+            <div id="tab-dividend" class="tab-content space-y-4">
+                <div class="autocomplete-wrapper">
+                    <label class="block text-[10px] font-bold text-gray-400 mb-1.5">نام نماد</label>
+                    <input type="text" id="symbolInputDividend" name="symbol_dividend" class="ghost-input w-full bg-gray-50 border border-gray-200 !text-right px-3 py-2.5 h-10" placeholder="جستجوی نماد..." autocomplete="off">
+                    <div class="autocomplete-dropdown custom-scrollbar"></div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="relative">
+                        <label class="block text-[10px] font-bold text-gray-400 mb-1.5">تاریخ مجمع (Record Date)</label>
+                        <input type="text" id="dateDisplayRecord" class="ghost-input w-full bg-gray-50 border border-gray-200 cursor-pointer !text-center px-3 py-2.5 h-10" placeholder="تاریخ سهامداری" readonly onclick="toggleDatepicker('dp-record')">
+                        <input type="hidden" name="record_date" id="dateInputRecord">
+                        <div id="dp-record" class="hidden absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-50 p-3">
+                             <div class="flex justify-between items-center mb-2">
+                                <button type="button" onclick="changePickerMonth('record', -1)" class="p-1 hover:bg-gray-100 rounded">‹</button>
+                                <span id="dp-label-record" class="text-xs font-bold text-gray-700"></span>
+                                <button type="button" onclick="changePickerMonth('record', 1)" class="p-1 hover:bg-gray-100 rounded">›</button>
+                            </div>
+                            <div id="dp-grid-record" class="grid grid-cols-7 gap-1"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="relative">
+                        <label class="block text-[10px] font-bold text-gray-400 mb-1.5">تاریخ واریز (Payment Date)</label>
+                        <input type="text" id="dateDisplayPayment" class="ghost-input w-full bg-gray-50 border border-gray-200 cursor-pointer !text-center px-3 py-2.5 h-10" placeholder="تاریخ واریز" readonly onclick="toggleDatepicker('dp-payment')">
+                        <input type="hidden" name="date_payment" id="dateInputPayment">
+                        <div id="dp-payment" class="hidden absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-50 p-3">
+                             <div class="flex justify-between items-center mb-2">
+                                <button type="button" onclick="changePickerMonth('payment', -1)" class="p-1 hover:bg-gray-100 rounded">‹</button>
+                                <span id="dp-label-payment" class="text-xs font-bold text-gray-700"></span>
+                                <button type="button" onclick="changePickerMonth('payment', 1)" class="p-1 hover:bg-gray-100 rounded">›</button>
+                            </div>
+                            <div id="dp-grid-payment" class="grid grid-cols-7 gap-1"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-400 mb-1.5">سود نقدی هر سهم (ریال)</label>
+                    <input type="text" name="dps" class="ghost-input w-full bg-gray-50 border border-gray-200 font-bold money-input px-3 py-2.5 h-10" placeholder="0">
+                </div>
+            </div>
+
+            <div id="tab-note" class="tab-content space-y-4">
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-400 mb-1.5">عنوان یادداشت</label>
+                    <input type="text" name="note_title" class="ghost-input w-full bg-gray-50 border border-gray-200 !text-right px-3 py-2.5 h-10" placeholder="متن یادداشت...">
+                </div>
+
+                <div class="relative">
+                    <label class="block text-[10px] font-bold text-gray-400 mb-1.5">تاریخ</label>
+                    <input type="text" id="dateDisplayNote" class="ghost-input w-full bg-gray-50 border border-gray-200 cursor-pointer !text-center px-3 py-2.5 h-10" placeholder="انتخاب تاریخ" readonly onclick="toggleDatepicker('dp-note')">
+                    <input type="hidden" name="date_note" id="dateInputNote">
+                    <div id="dp-note" class="hidden absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-50 p-3">
+                         <div class="flex justify-between items-center mb-2">
+                            <button type="button" onclick="changePickerMonth('note', -1)" class="p-1 hover:bg-gray-100 rounded">‹</button>
+                            <span id="dp-label-note" class="text-xs font-bold text-gray-700"></span>
+                            <button type="button" onclick="changePickerMonth('note', 1)" class="p-1 hover:bg-gray-100 rounded">›</button>
+                        </div>
+                        <div id="dp-grid-note" class="grid grid-cols-7 gap-1"></div>
+                    </div>
+                </div>
+
+                <div class="custom-select-container">
+                    <label class="block text-[10px] font-bold text-gray-400 mb-1.5">اولویت</label>
+                    <div class="select-trigger justify-start h-10" onclick="toggleSelect(this)">
+                        <span class="selected-text text-xs" id="priorityDisplay" data-placeholder="انتخاب اولویت">متوسط (نارنجی)</span>
+                        <input type="hidden" name="note_priority" id="priorityInput" value="medium">
+                        <svg class="w-4 h-4 text-gray-400 mr-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    </div>
+                    <div class="select-options">
+                        <div class="select-option flex items-center gap-2" onclick="selectOption(this, 'priorityInput', 'high')">
+                            <span class="w-2 h-2 rounded-full bg-red-500"></span>بالا (قرمز)
+                        </div>
+                        <div class="select-option flex items-center gap-2 selected" onclick="selectOption(this, 'priorityInput', 'medium')">
+                            <span class="w-2 h-2 rounded-full bg-orange-400"></span>متوسط (نارنجی)
+                        </div>
+                        <div class="select-option flex items-center gap-2" onclick="selectOption(this, 'priorityInput', 'low')">
+                            <span class="w-2 h-2 rounded-full bg-green-500"></span>پایین (سبز)
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-8 flex gap-3">
+                <button type="button" onclick="closeModal()" class="flex-1 flat-btn rounded-xl py-3 text-xs font-bold">انصراف</button>
+                <button type="submit" class="flex-[2] bg-[#5E2BFF] text-white rounded-xl py-3 text-xs font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-100">ثبت رویداد</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/jalaali-js/dist/jalaali.js"></script>
+<script>
+    // --- State ---
+    const G = {
+        events: {{ events | tojson | safe }} || [],
+        jToday: jalaali.toJalaali(new Date()),
+        view: { year: jalaali.toJalaali(new Date()).jy, month: jalaali.toJalaali(new Date()).jm },
+        selectedDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD
+        marketData: [{% for item in market_data %}{ symbol: "{{ item.symbol }}", name: "{{ item.company_name }}" },{% endfor %}]
+    };
+
+    // --- Calendar Render Logic ---
+    function renderMainCalendar() {
+        const grid = document.getElementById('calendarGrid');
+        grid.innerHTML = '';
+        
+        // Update Label
+        const monthNames = ["فروردین","اردیبهشت","خرداد","تیر","مرداد","شهریور","مهر","آبان","آذر","دی","بهمن","اسفند"];
+        document.getElementById('currentMonthLabel').innerText = toPersianNum(`${monthNames[G.view.month-1]} ${G.view.year}`);
+
+        const days = jalaali.jalaaliMonthLength(G.view.year, G.view.month);
+        const gDate = jalaali.toGregorian(G.view.year, G.view.month, 1);
+        const startDay = new Date(gDate.gy, gDate.gm-1, gDate.gd).getDay();
+        const padding = {6:0, 0:1, 1:2, 2:3, 3:4, 4:5, 5:6}[startDay];
+
+        // Empty cells
+        for(let i=0; i<padding; i++) grid.innerHTML += `<div class="calendar-day-cell bg-gray-50/50"></div>`;
+
+        for(let d=1; d<=days; d++) {
+            const g = jalaali.toGregorian(G.view.year, G.view.month, d);
+            const dateStr = `${g.gy}-${String(g.gm).padStart(2,'0')}-${String(g.gd).padStart(2,'0')}`;
+            const isToday = (G.view.year === G.jToday.jy && G.view.month === G.jToday.jm && d === G.jToday.jd);
+            const isSelected = (dateStr === G.selectedDate);
+
+            const cell = document.createElement('div');
+            cell.className = `calendar-day-cell ${isSelected ? 'active' : ''}`;
+            
+            // Events for this day
+            const dayEvents = G.events.filter(e => e.date === dateStr);
+            let dotsHtml = '<div class="flex flex-wrap gap-1 mt-auto">';
+            dayEvents.slice(0, 6).forEach(e => {
+                let color = 'bg-gray-300';
+                if(e.type === 'meeting') color = 'bg-blue-500';
+                else if(e.type === 'dividend') color = 'bg-green-500';
+                else if(e.type === 'note') {
+                    if(e.priority === 'high') color = 'bg-red-500';
+                    else if(e.priority === 'low') color = 'bg-green-400';
+                    else color = 'bg-orange-400';
+                }
+                dotsHtml += `<div class="event-dot ${color}"></div>`;
+            });
+            dotsHtml += '</div>';
+
+            cell.innerHTML = `
+                <div class="day-number ${isToday ? 'is-today' : ''}">${toPersianNum(d)}</div>
+                ${dotsHtml}
+            `;
+            cell.onclick = () => { G.selectedDate = dateStr; renderMainCalendar(); renderSidebar(); };
+            grid.appendChild(cell);
+        }
+    }
+
+    function renderSidebar() {
+        const list = document.getElementById('sidebarList');
+        const title = document.getElementById('sidebarTitle');
+        const jDate = jalaali.toJalaali(new Date(G.selectedDate));
+        const monthNames = ["فروردین","اردیبهشت","خرداد","تیر","مرداد","شهریور","مهر","آبان","آذر","دی","بهمن","اسفند"];
+        
+        title.innerText = `رویدادهای ${toPersianNum(jDate.jd)} ${monthNames[jDate.jm-1]}`;
+        list.innerHTML = '';
+
+        const daysEvents = G.events.filter(e => e.date === G.selectedDate);
+
+        if(daysEvents.length === 0) {
+            list.innerHTML = `<div class="text-center py-10 text-gray-300 text-xs">بدون رویداد</div>`;
+            return;
+        }
+
+        daysEvents.forEach(e => {
+            const div = document.createElement('div');
+            div.className = 'event-card group relative';
+            
+            let icon = '', typeLabel = '';
+            if(e.type === 'meeting') { icon = '<svg class="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>'; typeLabel = 'مجمع عمومی'; }
+            else if(e.type === 'dividend') { icon = '<svg class="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>'; typeLabel = 'واریز سود'; }
+            else { icon = '<svg class="w-5 h-5 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>'; typeLabel = 'یادداشت'; }
+
+            // دکمه حذف
+            const delBtn = `<button onclick="deleteEvent(${e.id})" class="absolute top-2 left-2 opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition">✕</button>`;
+
+            let actionBtn = '';
+            if(e.url) actionBtn = `<a href="${e.url}" target="_blank" class="block mt-2 text-center bg-blue-50 text-blue-600 text-[10px] font-bold py-1.5 rounded-lg hover:bg-blue-100 transition">ورود به وبینار</a>`;
+
+            div.innerHTML = `
+                ${delBtn}
+                <div class="event-card__icon bg-gray-50 border border-gray-100">${icon}</div>
+                <div class="flex-1 min-w-0">
+                    <h4 class="font-bold text-gray-800 text-xs truncate">${e.title}</h4>
+                    <span class="text-[10px] text-gray-400 block mt-0.5">${typeLabel} ${e.symbol ? `| ${e.symbol}` : ''}</span>
+                    ${actionBtn}
+                </div>
+            `;
+            list.appendChild(div);
+        });
+    }
+
+    window.actions = {
+        changeMonth: (dir) => {
+            G.view.month += dir;
+            if(G.view.month > 12) { G.view.month = 1; G.view.year++; }
+            if(G.view.month < 1) { G.view.month = 12; G.view.year--; }
+            renderMainCalendar();
+        }
+    };
+
+    window.deleteEvent = (id) => {
+        if(confirm('حذف شود؟')) {
+            fetch(`/transaction/delete_event/${id}`, {method: 'POST'}).then(() => window.location.reload());
+        }
+    };
+
+    // --- Modal Logic ---
+    window.openModal = () => document.getElementById('eventModal').classList.remove('hidden');
+    window.closeModal = () => document.getElementById('eventModal').classList.add('hidden');
+    
+    window.switchTab = (tab) => {
+        // UI Tabs
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('btn-'+tab).classList.add('active');
+        
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.getElementById('tab-'+tab).classList.add('active');
+        
+        // Logic
+        document.getElementById('eventTypeInput').value = tab;
+    };
+
+    // Datepicker Helpers (Using main.js renderCalendar)
+    // We maintain 3 separate picker states in memory or just re-render on demand
+    const pickerStates = { 
+        meeting: {y: G.jToday.jy, m: G.jToday.jm},
+        record: {y: G.jToday.jy, m: G.jToday.jm},
+        payment: {y: G.jToday.jy, m: G.jToday.jm},
+        note: {y: G.jToday.jy, m: G.jToday.jm}
+    };
+
+    window.toggleDatepicker = (suffix) => {
+        const id = 'dp-'+suffix;
+        const currentHidden = document.getElementById(id).classList.contains('hidden');
+        // Close all
+        document.querySelectorAll('[id^="dp-"]').forEach(el => el.classList.add('hidden'));
+        
+        if(currentHidden) {
+            document.getElementById(id).classList.remove('hidden');
+            // Render specific calendar
+            // Params: containerId, year, month, displayId, inputId, pickerId, labelId
+            // Note: inputId here receives Gregorian, displayId receives Jalali
+            let type = suffix.split('-')[0]; // e.g. meeting, record
+            if (suffix === 'record') type = 'record'; 
+            if (suffix === 'payment') type = 'payment'; 
+            
+            // Fix variable mapping
+            let displayId = 'dateDisplay' + (suffix.charAt(0).toUpperCase() + suffix.slice(1));
+            let inputId = 'dateInput' + (suffix.charAt(0).toUpperCase() + suffix.slice(1));
+            
+            const s = pickerStates[type] || pickerStates['meeting'];
+            renderCalendar(
+                'dp-grid-'+suffix, 
+                s.y, s.m, 
+                displayId, 
+                inputId, 
+                id, 
+                'dp-label-'+suffix
+            );
+        }
+    };
+
+    window.changePickerMonth = (suffix, dir) => {
+        const s = pickerStates[suffix];
+        s.m += dir;
+        if(s.m > 12) { s.m = 1; s.y++; }
+        if(s.m < 1) { s.m = 12; s.y--; }
+        
+        let displayId = 'dateDisplay' + (suffix.charAt(0).toUpperCase() + suffix.slice(1));
+        let inputId = 'dateInput' + (suffix.charAt(0).toUpperCase() + suffix.slice(1));
+        
+        renderCalendar(
+            'dp-grid-'+suffix, 
+            s.y, s.m, 
+            displayId, 
+            inputId, 
+            'dp-'+suffix, 
+            'dp-label-'+suffix
+        );
+    };
+
+    // --- Init ---
+    document.addEventListener('DOMContentLoaded', () => {
+        renderMainCalendar();
+        renderSidebar();
+        
+        // Initialize Autocompletes using main.js function
+        initGlobalAutocomplete('symbolInputMeeting', G.marketData, (item) => {});
+        initGlobalAutocomplete('symbolInputDividend', G.marketData, (item) => {});
+    });
+
+</script>
+{% endblock %}

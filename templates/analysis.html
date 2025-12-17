@@ -1,0 +1,372 @@
+{% extends "base.html" %}
+
+{% block title %}تحلیل بازار و سیگنال‌ها{% endblock %}
+
+{% block content %}
+
+<style>
+    /* لیست پیشنهادات (Autocomplete) */
+    .suggestions-list { position: absolute; top: 100%; right: 0; width: 100%; background: white; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.15); z-index: 100; overflow: hidden; display: none; margin-top: 4px; max-height: 200px; overflow-y: auto; }
+    .suggestions-list.show { display: block; }
+    .suggestion-item { padding: 12px 16px; color: #475569; cursor: pointer; border-bottom: 1px solid #f1f5f9; font-size: 14px; transition: bg 0.1s; text-align: right; }
+    .suggestion-item:hover { background: #eff6ff; color: #5E2BFF; }
+
+    /* اینپوت‌ها */
+    .light-input { background: #f8fafc; border: 1px solid #e2e8f0; color: #334155; border-radius: 12px; transition: all 0.2s; }
+    .light-input:focus { background: white; border-color: #5E2BFF; box-shadow: 0 0 0 3px rgba(94, 43, 255, 0.1); outline: none; }
+
+    /* کارت‌های مدل */
+    .model-card { background: white; border: 1px solid #f1f5f9; border-radius: 16px; overflow: hidden; transition: all 0.2s; position: relative; display: flex; flex-direction: column; height: 100%; }
+    .model-header { padding: 8px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f8fafc; }
+    .model-body { padding: 20px; flex-grow: 1; display: flex; flex-direction: column; justify-content: center; }
+    
+    .theme-Low .model-header { background: #f0fdf4; color: #166534; }
+    .theme-Medium .model-header { background: #eff6ff; color: #1e40af; }
+    .theme-High .model-header { background: #fef2f2; color: #991b1b; }
+
+    /* نوار توزیع */
+    .allocation-bar { display: flex; height: 8px; width: 100%; overflow: visible; background: #f1f5f9; border-radius: 8px; margin-bottom: 20px; }
+    .bar-segment { height: 100%; position: relative; cursor: help; }
+    .bar-segment:first-child { border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
+    .bar-segment:last-child { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
+    .bg-equity { background-color: #1e293b; } .bg-gold { background-color: #adb5bd; } .bg-fixed { background-color: #e9ecef; }
+    
+    .bar-tooltip { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%) translateY(-8px); background: #1e293b; color: white; padding: 6px 10px; border-radius: 6px; font-size: 12px; white-space: nowrap; opacity: 0; visibility: hidden; transition: all 0.2s; pointer-events: none; z-index: 50; }
+    .bar-segment:hover .bar-tooltip { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(-5px); }
+
+    .asset-table { width: 100%; text-align: right; font-size: 11px; }
+    .asset-table th { color: #94a3b8; font-weight: bold; padding: 12px; border-bottom: 1px solid #f1f5f9; background: #f8fafc; }
+    .asset-table td { padding: 12px; border-bottom: 1px dashed #f8fafc; color: #334155; font-weight: bold; }
+</style>
+
+<div class="flex justify-between items-center mb-5">
+    <div>
+        <h1 class="text-2xl font-black text-gray-800">مانیتورینگ</h1>
+        <p class="text-md text-gray-500 mt-1">تحلیل و مدیریت استراتژی‌های تیم</p>
+    </div>
+    <button onclick="openAddSignalModal()" class="bg-[#5E2BFF] text-white px-6 py-3 rounded-md font-medium hover:bg-indigo-700 transition flex items-center gap-2 text-md">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+        ثبت تحلیل
+    </button>
+</div>
+<hr class="mb-5 border-1">
+
+{% if models %}
+<div class="mb-12">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {% for model in models %}
+<div class="model-card group relative overflow-hidden bg-white border border-gray-200 rounded-sm hover:shadow-md hover:shadow-gray-100 transition-all duration-300">
+            <div class="p-4">
+                <div class="flex justify-between items-center mb-6">
+                    <div class="flex flex-row items-center">
+                        <h4 class="font-black text-gray-800 py-1 text-[14px]">{{ model.name }}</h4>
+                        <span class="mr-3 text-[10px] text-gray-500 font-bold bg-gray-100 px-4 py-1 rounded-full border border-gray-200 uppercase">
+                            {{ model.risk_level }} STRATEGY
+                        </span>
+                    </div>
+                    <button onclick="openConfigModal('{{ model.risk_level }}', '{{ model.name }}', {{ model.config.Equity }}, {{ model.config.Gold }}, {{ model.config.Fixed }})" 
+                            class="text-gray-500 hover:text-gray-700 bg-gray-100 border-2 hover:bg-gray-200 p-1 rounded-xl transition">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <line x1="4" y1="7" x2="20" y2="7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                <circle cx="10" cy="7" r="2.2" fill="white" stroke="currentColor" stroke-width="2"/>
+                                <line x1="4" y1="15" x2="20" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                <circle cx="14" cy="15" r="2.2" fill="white" stroke="currentColor" stroke-width="2"/></svg>
+                    </button>
+                </div>
+
+                <div class="allocation-bar mb-6 h-3 flex bg-gray-100 rounded-full relative">
+                    
+                    <div class="bar-segment h-full bg-slate-500 hover:bg-purple-700 transition-colors relative first:rounded-r-full last:rounded-l-full" style="width: {{ model.config.Equity }}%">
+                        <div class="bar-tooltip">سهام: {{ model.config.Equity | persian_num }}٪</div>
+                    </div>
+
+                    <div class="bar-segment h-full bg-slate-300 hover:bg-amber-300 transition-colors relative" style="width: {{ model.config.Gold }}%">
+                        <div class="bar-tooltip">طلا: {{ model.config.Gold | persian_num }}٪</div>
+                    </div>
+
+                    <div class="bar-segment h-full bg-slate-400 hover:bg-teal-400 transition-colors relative first:rounded-r-full last:rounded-l-full" style="width: {{ model.config.Fixed }}%">
+                        <div class="bar-tooltip">درآمد ثابت: {{ model.config.Fixed | persian_num }}٪</div>
+                    </div>
+                    
+                </div>
+                
+                <button onclick="openAssetsModal('{{ model.risk_level }}')" class="w-full py-3 rounded-xl border border-gray-100 text-gray-600 font-bold text-xs hover:bg-gray-50 hover:text-gray-900 hover:border-gray-300 transition flex items-center justify-center gap-2 group">
+                    <span>مدیریت دارایی‌ها</span>
+                    <svg class="w-3 h-3 " fill="none" viewBox="0 0 24 24" stroke-width="4" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div class="mb-12">
+    <div class="flex justify-between items-center mb-6">
+        <h3 style="word-spacing: -2px;" class="font-bold text-gray-700 flex items-center gap-2">
+            <span class="w-2 h-6 bg-[#5E2BFF] rounded-full"></span>
+            واچ‌لیست شخصی
+        </h3>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for signal in signals %}
+        <div class="bg-white border border-gray-200 rounded-2xl p-5 hover:shadow-lg transition-all relative group overflow-hidden">
+            <div class="absolute top-0 right-0 w-1.5 h-full {{ 'bg-green-500' if signal.status == 'profit' or signal.status == 'target_hit' else ('bg-red-500' if signal.status == 'stop_hit' else 'bg-gray-300') }}"></div>
+            <div class="flex justify-between items-start mb-4 pl-2">
+                <div>
+                    <h4 class="font-black text-gray-800 text-lg">{{ signal.symbol }}</h4>
+                    <span class="text-xs text-gray-400 block mt-1">{{ signal.name }}</span>
+                </div>
+                <div class="flex flex-col items-end gap-2">
+                    <a href="/analysis/toggle_share/{{ signal.id }}" class="flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-bold border transition {{ 'bg-blue-50 text-blue-600 border-blue-100' if signal.is_public else 'bg-gray-50 text-gray-400 border-gray-100' }}">
+                        {{ 'عمومی' if signal.is_public else 'شخصی' }}
+                    </a>
+                    <span class="text-[9px] text-gray-400 font-bold dir-ltr">{{ signal.added_at | jalali | persian_num }}</span>
+                </div>
+            </div>
+            <div class="grid grid-cols-3 gap-2 mb-4 text-center">
+                <div class="bg-green-50 p-2 rounded-xl border border-green-100"><span class="block text-[9px] text-green-600 mb-1">هدف</span><span class="font-bold text-gray-800 text-xs">{{ signal.target | currency }}</span></div>
+                <div class="bg-blue-50 p-2 rounded-xl border border-blue-100"><span class="block text-[9px] text-blue-600 mb-1">ورود</span><span class="font-bold text-gray-800 text-xs">{{ signal.buy | currency }}</span></div>
+                <div class="bg-red-50 p-2 rounded-xl border border-red-100"><span class="block text-[9px] text-red-600 mb-1">حد ضرر</span><span class="font-bold text-gray-800 text-xs">{{ signal.stop | currency }}</span></div>
+            </div>
+            <div class="flex justify-between items-center border-t border-gray-50 pt-3 pl-2">
+                <div class="flex items-center gap-2"><span class="text-[10px] font-bold text-gray-400">قیمت فعلی:</span><span class="text-sm font-black {{ 'text-green-600' if signal.price > signal.buy else 'text-red-500' }}">{{ signal.price | currency }}</span></div>
+                <a href="/analysis/delete/{{ signal.id }}" onclick="return confirm('حذف؟')" class="text-gray-300 hover:text-red-500 transition p-1"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg></a>
+            </div>
+            {% if signal.note %}<div class="mt-3 bg-gray-50 p-3 rounded-lg text-[10px] text-gray-500 leading-relaxed border border-gray-100">{{ signal.note }}</div>{% endif %}
+        </div>
+        {% else %}
+        <div class="col-span-full py-16 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-center">
+            <h3 class="text-gray-500 font-medium mb-4">نمادی یافت نشد.</h3>
+            <button onclick="openAddSignalModal()" class="border-2 text-gray-400 px-6 py-2.5 rounded-full font-medium text-sm transition hover:bg-gray-100">افزودن اولین سیگنال</button>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="mb-12 border-t border-gray-100 pt-8">
+    <div class="flex justify-between items-center mb-6">
+        <h3 class="font-bold text-gray-700 flex items-center gap-2">
+            <span class="w-2 h-6 bg-orange-400 rounded-full"></span>
+           واچ‌لیست اشتراکی تیم
+        </h3>
+    </div>
+    
+    {% if shared_signals %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for sig in shared_signals %}
+        <div class="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-2xl p-5 hover:shadow-lg transition-all relative group">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-[#d97706] font-black border border-orange-200 text-sm shadow-sm">{{ sig.analyst[:1] }}</div>
+                    <div>
+                        <span class="block font-black text-gray-800 text-base">{{ sig.symbol }}</span>
+                        <span class="block text-[10px] text-gray-500 font-bold">{{ sig.analyst }}</span>
+                    </div>
+                </div>
+                <span class="text-[9px] text-gray-400 font-bold dir-ltr">{{ sig.added_at | jalali | persian_num }}</span>
+            </div>
+            <div class="grid grid-cols-3 gap-2 mb-4 text-center">
+                <div class="bg-white p-2 rounded-xl border border-gray-100 shadow-sm"><span class="block text-[8px] text-gray-400">هدف</span><span class="font-bold text-green-600 text-xs">{{ sig.target | currency }}</span></div>
+                <div class="bg-white p-2 rounded-xl border border-gray-100 shadow-sm"><span class="block text-[8px] text-gray-400">ورود</span><span class="font-bold text-blue-600 text-xs">{{ sig.buy | currency }}</span></div>
+                <div class="bg-white p-2 rounded-xl border border-gray-100 shadow-sm"><span class="block text-[8px] text-gray-400">ضرر</span><span class="font-bold text-red-500 text-xs">{{ sig.stop | currency }}</span></div>
+            </div>
+            {% if sig.note %}<div class="bg-white p-3 rounded-lg border border-gray-100 text-[10px] text-gray-500 leading-relaxed italic relative"><span class="absolute -top-2 right-3 bg-white px-1 text-gray-300">❝</span>{{ sig.note }}</div>{% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="bg-orange-50 rounded-2xl border border-orange-100 p-8 text-center">
+        <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-orange-100 text-orange-500 mb-3">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+        </div>
+        <h3 class="font-bold text-gray-800 text-sm">هنوز سیگنال عمومی منتشر نشده است</h3>
+        <p class="text-xs text-gray-500 mt-1">با زدن دکمه «عمومی» روی کارت‌های خود، تحلیل‌تان را با دیگران به اشتراک بگذارید.</p>
+    </div>
+    {% endif %}
+</div>
+
+<div id="addSignalModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onclick="closeAddSignalModal()"></div>
+    <div class="relative w-full h-[680px] max-w-2xl bg-white rounded-lg overflow-visible px-[60px] py-[60px]">
+        <div class="flex justify-between items-center mb-6"><h3 style="word-spacing: -2px;" class="font-bold text-[#1E293B] text-lg flex items-center gap-2">ثبت تحلیل جدید</h3><button onclick="closeAddSignalModal()" class="text-gray-400 p-2 rounded-full hover:bg-gray-100 duration-300">
+            <svg class="w-6 h-6 text-gray-400 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m15 9-6 6m0-6 6 6m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+            <svg>
+</button></div>
+        <hr class="mb-6 mt-6 border-dashed">
+        <form method="POST" action="/analysis">
+            <div class="mb-5 relative">
+                <label class="block text-[14px] font-medium text-gray-400 uppercase mb-2">نام نماد</label>
+                <div class="relative">
+                    <input type="text" id="signalSymbol" name="symbol" class="w-full bg-gray-50 border border-gray-200 rounded-sm p-3 text-center text-sm font-medium outline-none focus:bg-white " placeholder="نماد مورد نظر را وارد کنید." autocomplete="off" required>
+                    <div id="signalSuggestions" class="suggestions-list"></div>
+                </div>
+            </div>
+            <input type="hidden" name="asset_class" id="signalAssetClass" value="Stock">
+            <div class="grid grid-cols-3 gap-3 mb-5 mt-8">
+                <div><label class="block text-[14px] font-medium text-gray-400 mb-2">حد سود</label><input type="text" name="target_price" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-center money-input font-medium persian-mode outline-none text-sm focus:bg-white" placeholder="0"></div>
+                <div><label class="block text-[14px] font-medium text-gray-400 mb-2">نقطه ورود</label><input type="text" name="buy_price" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-center money-input font-medium persian-mode outline-none text-sm focus:bg-white" placeholder="0" required></div>
+                <div><label class="block text-[14px] font-medium text-gray-400 mb-2">حد ضرر</label><input type="text" name="stop_loss" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-center money-input font-medium persian-mode outline-none text-sm focus:bg-white" placeholder="0"></div>
+            </div>
+            <div class="mb-6"><label class="block text-[14px] font-medium text-gray-400 mb-4 mt-4">یادداشت</label><textarea name="note" rows="3" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm resize-none outline-none focus:bg-white"></textarea></div>
+            <button type="submit" class="w-full bg-[#5E2BFF] text-white py-3.5 rounded-md font-medium hover:bg-indigo-700 transition text-md mt-5">ثبت و ذخیره سیگنال</button>
+        </form>
+    </div>
+</div>
+
+<div id="configModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4"><div class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm transition-opacity" onclick="closeConfigModal()"></div><div class="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl p-6"><h3 class="font-black text-gray-800 text-lg mb-4 text-center">تنظیم وزن‌های مدل <span id="confName" class="text-blue-600"></span></h3><form method="POST" action="/analysis/config/edit"><input type="hidden" name="profile_name" id="confProfile"><div class="space-y-4"><div><label class="flex justify-between text-xs font-bold text-gray-500 mb-2"><span>درآمد ثابت</span><span class="text-green-600">%</span></label><input type="text" name="fixed" id="confFixed" class="w-full light-input p-3 text-center font-bold text-green-600 money-input"></div><div><label class="flex justify-between text-xs font-bold text-gray-500 mb-2"><span>طلا</span><span class="text-yellow-500">%</span></label><input type="text" name="gold" id="confGold" class="w-full light-input p-3 text-center font-bold text-yellow-500 money-input"></div><div><label class="flex justify-between text-xs font-bold text-gray-500 mb-2"><span>سهام</span><span class="text-red-500">%</span></label><input type="text" name="equity" id="confEquity" class="w-full light-input p-3 text-center font-bold text-red-500 money-input"></div></div><div class="mt-6 text-[10px] text-center text-gray-400 mb-4">* مجموع وزن‌ها باید ۱۰۰٪ باشد.</div><button type="submit" class="w-full bg-[#1E293B] text-white py-3 rounded-xl font-bold hover:bg-slate-800 transition text-sm">ذخیره تنظیمات</button></form></div></div>
+<div id="addModelAssetModal" class="fixed inset-0 z-[80] hidden flex items-center justify-center p-4"><div class="absolute inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity" onclick="closeAddModelAssetModal()"></div><div class="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl p-6"><h3 class="font-black text-gray-800 text-lg mb-4">افزودن دارایی</h3><form method="POST" action="/analysis/model/add"><input type="hidden" name="profile" id="amaProfile"><div class="mb-4 relative"><label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">نماد</label><input type="text" id="amaSymbol" name="symbol" class="w-full light-input p-3 text-sm font-bold text-center" placeholder="جستجو..." autocomplete="off" required><div id="amaSuggestions" class="suggestions-list"></div></div><div class="mb-6"><label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">وزن پیشنهادی (درصد)</label><input type="text" name="weight" class="w-full light-input p-3 text-sm font-bold text-center money-input" placeholder="مثلا: 5" required></div><button type="submit" class="w-full bg-[#5E2BFF] text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition text-sm">افزودن</button></form></div></div>
+<div id="editModelAssetModal" class="fixed inset-0 z-[80] hidden flex items-center justify-center p-4"><div class="absolute inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity" onclick="closeEditModelAssetModal()"></div><div class="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl p-6"><h3 class="font-black text-gray-800 text-lg mb-4">ویرایش وزن <span id="emaSymbolDisplay" class="text-blue-600"></span></h3><form method="POST" action="/analysis/model/edit"><input type="hidden" name="asset_id" id="emaId"><div class="mb-6"><label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">وزن جدید (درصد)</label><input type="text" name="weight" id="emaWeight" class="w-full light-input p-3 text-sm font-bold text-center money-input" required></div><button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition text-sm">ذخیره تغییرات</button></form></div></div>
+{% for model in models %}<div id="assetsModal-{{ model.risk_level }}" class="fixed inset-0 z-[70] hidden flex items-center justify-center p-4"><div class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm transition-opacity" onclick="closeAssetsModal('{{ model.risk_level }}')"></div><div class="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"><div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50"><h3 class="font-black text-gray-800 text-sm">ریز دارایی‌های سبد <span class="text-blue-600">{{ model.risk_level }}</span></h3><button onclick="closeAssetsModal('{{ model.risk_level }}')" class="text-gray-400 hover:text-red-500">✕</button></div><div class="p-4 bg-white border-b border-gray-100 flex justify-between items-center"><span class="text-xs text-gray-500 font-bold">لیست نمادهای پیشنهادی</span><button onclick="openAddModelAssetModal('{{ model.risk_level }}')" class="bg-indigo-50 text-[#5E2BFF] px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-indigo-100 transition">+ افزودن دارایی</button></div><div class="flex-1 overflow-y-auto"><table class="asset-table"><thead><tr><th>نماد</th><th class="text-center">کلاس دارایی</th><th class="text-center">وزن پیشنهادی</th><th class="text-center">قیمت روز</th><th class="text-left pl-4">عملیات</th></tr></thead><tbody>{% for asset in model.assets %}<tr class="group hover:bg-gray-50 transition"><td><span class="font-bold text-gray-800">{{ asset.symbol }}</span><span class="block text-[9px] text-gray-400">{{ asset.company_name }}</span></td><td class="text-center">{% if 'Gold' in asset.asset_type or 'طلا' in asset.asset_type %}<span class="px-2 py-0.5 rounded text-[9px] bg-yellow-50 text-yellow-600 border border-yellow-100 font-bold">طلا</span>{% elif 'Fixed' in asset.asset_type or 'ثابت' in asset.asset_type %}<span class="px-2 py-0.5 rounded text-[9px] bg-green-50 text-green-600 border border-green-100 font-bold">درآمد ثابت</span>{% else %}<span class="px-2 py-0.5 rounded text-[9px] bg-red-50 text-red-600 border border-red-100 font-bold">سهام</span>{% endif %}</td><td class="text-center font-bold text-blue-600">%{{ asset.target_weight }}</td><td class="text-center font-mono text-gray-500">{{ asset.last_price | currency }}</td><td class="text-left pl-4 flex justify-end gap-2 items-center h-full pt-3"><button onclick="openEditModelAssetModal('{{ asset.id }}', '{{ asset.symbol }}', '{{ asset.target_weight }}')" class="text-blue-400 hover:text-blue-600">✎</button><a href="/analysis/model/delete/{{ asset.id }}" onclick="return confirm('حذف {{ asset.symbol }}؟')" class="text-gray-300 hover:text-red-500">✕</a></td></tr>{% else %}<tr><td colspan="5" class="text-center text-gray-400 py-8 font-normal text-xs">هیچ دارایی تعریف نشده است.</td></tr>{% endfor %}</tbody></table></div></div></div>{% endfor %}
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/jalaali-js/dist/jalaali.js"></script>
+<script>
+ const marketSymbols = [{% for item in market_data %}{ symbol: "{{ item.symbol }}", name: "{{ item.company_name }}", type: "{{ item.asset_type }}" },{% endfor %}];
+    
+    // 1. تابع کمکی برای تبدیل ی/ک عربی به فارسی
+    function normalizePersian(str) {
+        if (!str) return "";
+        return str.toString().replace(/ي/g, "ی").replace(/ك/g, "ک");
+    }
+
+    // 2. نسخه نهایی: رنکینگ + حذف تکراری + نمایش فارسی اجباری
+    function setupAutocomplete(inputId, listId, onSelect) {
+        const input = document.getElementById(inputId);
+        const list = document.getElementById(listId);
+        if(!input) return;
+
+        input.addEventListener('input', function() {
+            const rawQuery = this.value;
+            const query = normalizePersian(rawQuery).trim();
+            const cleanQuery = query.replace(/\s/g, ''); 
+
+            list.innerHTML = '';
+            if(query.length < 1) { list.classList.remove('show'); return; }
+            
+            // الف) فیلتر کردن
+            let matches = marketSymbols.filter(s => { 
+                const sSym = normalizePersian(s.symbol); 
+                const sName = normalizePersian(s.name);
+                const sSymClean = sSym.replace(/\s/g, '');
+                return sSymClean.includes(cleanQuery) || sName.includes(query); 
+            });
+
+            // ب) مرتب‌سازی هوشمند
+            matches.sort((a, b) => {
+                const symA = normalizePersian(a.symbol);
+                const symB = normalizePersian(b.symbol);
+                const nameA = normalizePersian(a.name);
+                const nameB = normalizePersian(b.name);
+
+                if (symA === query && symB !== query) return -1;
+                if (symB === query && symA !== query) return 1;
+
+                const startA = symA.startsWith(query);
+                const startB = symB.startsWith(query);
+                if (startA && !startB) return -1;
+                if (startB && !startA) return 1;
+
+                const nameStartA = nameA.startsWith(query);
+                const nameStartB = nameB.startsWith(query);
+                if (nameStartA && !nameStartB) return -1;
+                if (nameStartB && !nameStartA) return 1;
+
+                return 0;
+            });
+
+            // ج) حذف تکراری‌ها
+            const uniqueResults = [];
+            const seenSymbols = new Set();
+
+            for (const item of matches) {
+                const normalizedSymbol = normalizePersian(item.symbol);
+                if (!seenSymbols.has(normalizedSymbol)) {
+                    seenSymbols.add(normalizedSymbol);
+                    uniqueResults.push(item);
+                }
+                if (uniqueResults.length >= 5) break;
+            }
+            
+            // د) رندر کردن نتایج (اصلاح شده برای نمایش فارسی)
+            if(uniqueResults.length > 0) {
+                list.classList.add('show');
+                uniqueResults.forEach(item => {
+                    // *** تغییر مهم: تبدیل اجباری به فارسی برای نمایش ***
+                    const persianSymbol = normalizePersian(item.symbol);
+                    const persianName = normalizePersian(item.name);
+                    
+                    const div = document.createElement('div'); 
+                    div.className = 'suggestion-item';
+                    div.innerHTML = `<div class="flex justify-between items-center">
+                        <span class="font-bold text-gray-800">${persianSymbol}</span> 
+                        <span class="text-[10px] text-gray-400 truncate max-w-[120px]">${persianName}</span>
+                    </div>`;
+                    
+                    div.onclick = () => { 
+                        // *** تغییر مهم: قرار دادن مقدار فارسی در اینپوت ***
+                        input.value = persianSymbol; 
+                        
+                        list.classList.remove('show'); 
+                        if(onSelect) onSelect(item); 
+                    };
+                    list.appendChild(div);
+                });
+            } else {
+                list.classList.remove('show');
+            }
+        });
+
+        document.addEventListener('click', (e) => { 
+            if(e.target !== input && !list.contains(e.target)) list.classList.remove('show'); 
+        });
+    }
+
+    // راه‌اندازی‌ها
+    setupAutocomplete('signalSymbol', 'signalSuggestions', (item) => { 
+        let at = 'Stock'; 
+        if(item.type && (item.type.includes('Gold') || item.type.includes('طلا'))) at = 'Gold'; 
+        else if(item.type && (item.type.includes('Fixed') || item.type.includes('ثابت'))) at = 'Fixed'; 
+        const hiddenInput = document.getElementById('signalAssetClass');
+        if(hiddenInput) hiddenInput.value = at; 
+    });
+    
+    setupAutocomplete('amaSymbol', 'amaSuggestions');
+
+    // Modals
+    function openAddSignalModal() { document.getElementById('addSignalModal').classList.remove('hidden'); }
+    function closeAddSignalModal() { document.getElementById('addSignalModal').classList.add('hidden'); }
+    
+    function openConfigModal(profile, eq, gd, fx) { document.getElementById('configModal').classList.remove('hidden'); document.getElementById('confName').innerText = profile; document.getElementById('confProfile').value = profile; document.getElementById('confEquity').value = eq; document.getElementById('confGold').value = gd; document.getElementById('confFixed').value = fx; }
+    function closeConfigModal() { document.getElementById('configModal').classList.add('hidden'); }
+    function openAssetsModal(profile) { document.getElementById('assetsModal-' + profile).classList.remove('hidden'); }
+    function closeAssetsModal(profile) { document.getElementById('assetsModal-' + profile).classList.add('hidden'); }
+    function openAddModelAssetModal(profile) { document.getElementById('addModelAssetModal').classList.remove('hidden'); document.getElementById('amaProfile').value = profile; document.getElementById('amaSymbol').value = ''; }
+    function closeAddModelAssetModal() { document.getElementById('addModelAssetModal').classList.add('hidden'); }
+    function openEditModelAssetModal(id, symbol, weight) { document.getElementById('editModelAssetModal').classList.remove('hidden'); document.getElementById('emaId').value = id; document.getElementById('emaSymbolDisplay').innerText = symbol; document.getElementById('emaWeight').value = weight; }
+    function closeEditModelAssetModal() { document.getElementById('editModelAssetModal').classList.add('hidden'); }
+
+    // Money Formatter
+    document.addEventListener('input', function (e) {
+        if (e.target.classList.contains('money-input')) {
+            let val = e.target.value.replace(/[۰-۹]/g, d => "۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/[^0-9]/g, '');
+            if (val === "") { e.target.value = ""; return; }
+            e.target.value = parseInt(val).toLocaleString('en-US');
+        }
+    });
+
+    document.addEventListener('input', function (e) {
+    // اگر کلاس اینپوت persian-num-input بود (یا هر کلاسی که دوست دارید)
+        if (e.target.classList.contains('persian-mode')) {
+             let val = e.target.value;
+             // تبدیل اعداد انگلیسی به فارسی در لحظه تایپ
+             e.target.value = val.replace(/\d/g, d => "۰۱۲۳۴۵۶۷۸۹"[d]);
+        }
+    });
+
+</script>
+{% endblock %}

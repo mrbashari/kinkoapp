@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}تنظیمات سیستم{% endblock %}
+
+{% block content %}
+
+    <style>
+        /* استایل اختصاصی برای آپلود فایل */
+        .file-upload-box {
+            border: 2px dashed #cbd5e1;
+            border-radius: 0.75rem;
+            transition: all 0.2s;
+            cursor: pointer;
+            background-color: #f8fafc;
+        }
+        .file-upload-box:hover {
+            border-color: #5E2BFF;
+            background-color: #eff6ff;
+        }
+        /* انیمیشن چرخش آیکون ریست */
+        .group:hover .rotate-icon {
+            transform: rotate(180deg);
+        }
+    </style>
+
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-2xl font-black text-[#1E293B]">تنظیمات و نگهداری</h1>
+            <p class="text-sm text-gray-500 mt-1">مدیریت داده‌ها، پشتیبان‌گیری و بازیابی</p>
+        </div>
+    </div>
+
+    {% if message %}
+    <div class="mb-6 p-4 rounded-xl text-sm font-bold border flex items-center gap-2
+                {{ 'bg-green-50 border-green-200 text-green-700' if 'موفقیت' in message else 'bg-yellow-50 border-yellow-200 text-yellow-700' }}">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        {{ message }}
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-xl bg-blue-50 text-[#5E2BFF] flex items-center justify-center">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-bold text-gray-800 text-lg">نسخه پشتیبان</h3>
+                    <p class="text-xs text-gray-400">دانلود کل دیتابیس سامانه</p>
+                </div>
+            </div>
+            
+            <p class="text-xs text-gray-500 leading-relaxed mb-6 flex-1">
+                با دریافت فایل پشتیبان (Backup)، یک کپی کامل از تمام پرتفوی‌ها، تراکنش‌ها، کاربران و تنظیمات سیستم دانلود می‌شود. پیشنهاد می‌شود به صورت هفتگی نسخه پشتیبان تهیه کنید.
+            </p>
+            
+            <a href="/backup/download" class="w-full py-3 rounded-xl bg-[#5E2BFF] text-white font-bold text-sm hover:bg-indigo-700 transition shadow-md shadow-indigo-200 flex items-center justify-center gap-2">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                دانلود فایل .db
+            </a>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-bold text-gray-800 text-lg">بازیابی اطلاعات</h3>
+                    <p class="text-xs text-gray-400">بازگردانی سیستم به تاریخ قبل</p>
+                </div>
+            </div>
+            
+            <form action="/backup/restore" method="POST" enctype="multipart/form-data" class="flex-1 flex flex-col">
+                <div class="relative flex-1 mb-4 group">
+                    <input type="file" name="file" id="fileInput" accept=".db" required class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="updateFileName(this)">
+                    <div class="file-upload-box h-full flex flex-col items-center justify-center p-4 text-center">
+                        <svg class="w-8 h-8 text-gray-300 mb-2 group-hover:text-[#5E2BFF] transition" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        <span class="text-xs text-gray-500 font-bold" id="fileNameLabel">کلیک کنید یا فایل را اینجا رها کنید</span>
+                        <span class="text-[10px] text-gray-400 mt-1">فقط فایل .db</span>
+                    </div>
+                </div>
+                
+                <button type="submit" class="w-full py-3 rounded-xl bg-white border-2 border-amber-500 text-amber-600 font-bold text-sm hover:bg-amber-50 transition flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                    شروع عملیات بازیابی
+                </button>
+            </form>
+        </div>
+
+        <div class="lg:col-span-2 bg-red-50/50 p-6 rounded-2xl border border-red-100 flex flex-col md:flex-row items-center justify-between gap-6 group">
+            <div class="flex items-start gap-4">
+                <div class="w-12 h-12 rounded-full bg-red-100 text-[#DB324D] flex items-center justify-center shrink-0 border-4 border-white shadow-sm">
+                    <svg class="w-6 h-6 rotate-icon transition-transform duration-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-bold text-[#DB324D] text-lg">بازگشت به تنظیمات کارخانه (Reset Factory)</h3>
+                    <p class="text-xs text-gray-500 mt-1 max-w-xl leading-relaxed">
+                        هشدار: با اجرای این عملیات، <span class="font-bold text-red-600">تمام اطلاعات</span> شامل کاربران، پرتفوی‌ها و سوابق به طور کامل حذف شده و سیستم به حالت اولیه باز می‌گردد. این عمل غیرقابل بازگشت است.
+                    </p>
+                </div>
+            </div>
+
+            <form id="resetSystemForm" action="/system/reset" method="POST" style="display: none;"></form>
+
+            <button onclick="confirmResetSystem()" class="whitespace-nowrap px-6 py-3 rounded-xl bg-[#DB324D] text-white font-bold text-sm hover:bg-red-700 transition shadow-lg shadow-red-200 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                ریست کامل سیستم
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        function updateFileName(input) {
+            const label = document.getElementById('fileNameLabel');
+            if (input.files && input.files.length > 0) {
+                label.innerText = input.files[0].name;
+                label.classList.add('text-[#5E2BFF]');
+            } else {
+                label.innerText = "کلیک کنید یا فایل را اینجا رها کنید";
+                label.classList.remove('text-[#5E2BFF]');
+            }
+        }
+
+        // تابع تایید ریست (استفاده از مودال Base.html با هک فرم)
+        function confirmResetSystem() {
+            // باز کردن مودال
+            document.getElementById('confirmTitle').innerText = "هشدار امنیتی بسیار مهم";
+            document.getElementById('confirmMessage').innerText = "آیا کاملاً مطمئن هستید؟ تمام اطلاعات سیستم پاک خواهد شد و قابل بازیابی نیست.";
+            
+            // تغییر رفتار دکمه تایید مودال برای سابمیت فرم
+            const btn = document.getElementById('confirmActionBtn');
+            btn.href = "javascript:void(0)"; // غیرفعال کردن لینک
+            btn.onclick = function() {
+                document.getElementById('resetSystemForm').submit();
+            };
+            
+            // نمایش مودال
+            const modal = document.getElementById('confirmModal');
+            modal.classList.remove('hidden');
+            const box = modal.querySelector('div:last-child');
+            setTimeout(() => { 
+                box.classList.remove('scale-95', 'opacity-0'); 
+                box.classList.add('scale-100', 'opacity-100'); 
+            }, 10);
+        }
+    </script>
+
+{% endblock %}

@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}عملکرد معاملاتی {{ portfolio.name }}{% endblock %}
+
+{% block content %}
+
+    <style>
+        .chic-table th { font-family: 'Yekan', sans-serif; font-weight: 800; color: #64748b; font-size: 10px; padding: 14px; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+        .chic-table td { padding: 12px; border-bottom: 1px solid #f1f5f9; font-size: 11px; }
+        
+        .stat-card { background: white; border: 1px solid #e2e8f0; border-radius: 1rem; padding: 1.5rem; transition: all 0.2s; position: relative; overflow: hidden; }
+        .stat-card:hover { transform: translateY(-2px); shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); border-color: #5E2BFF; }
+        .stat-icon { position: absolute; top: -10px; left: -10px; width: 80px; height: 80px; opacity: 0.05; transform: rotate(15deg); }
+    </style>
+
+    <div class="flex justify-between items-center mb-8">
+        <div class="flex items-center gap-3">
+            <a href="/portfolio/{{ portfolio.id }}" class="text-gray-400 hover:text-[#5E2BFF] transition p-1 rounded-lg hover:bg-gray-100">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
+            </a>
+            <div>
+                <h1 class="text-2xl font-black text-[#1E293B]">کارنامه عملکرد</h1>
+                <p class="text-sm text-gray-500 mt-1">تحلیل معاملات بسته شده (Realized PnL)</p>
+            </div>
+        </div>
+        
+        <div class="flex gap-2">
+            <span class="px-3 py-1.5 bg-blue-50 text-[#5E2BFF] rounded-lg text-xs font-bold border border-blue-100">
+                {{ portfolio.name }}
+            </span>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        
+        <div class="stat-card group">
+            <svg class="stat-icon" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <span class="block text-xs font-bold text-gray-400 uppercase mb-1">نرخ برد (Win Rate)</span>
+            <div class="flex items-end gap-1">
+                <span class="text-3xl font-black {{ 'text-green-500' if perf.win_rate >= 50 else 'text-red-500' }}">{{ perf.win_rate }}</span>
+                <span class="text-sm font-bold text-gray-400 mb-1">%</span>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <svg class="stat-icon" fill="currentColor" viewBox="0 0 24 24"><path d="M5 3v18l7-3 7 3V3H5zm12 13l-5-2.18L7 16V5h10v11z"/></svg>
+            <span class="block text-xs font-bold text-gray-400 uppercase mb-1">فاکتور سود (Profit Factor)</span>
+            <div class="flex items-end gap-1">
+                <span class="text-3xl font-black {{ 'text-[#5E2BFF]' if perf.profit_factor >= 1.5 else 'text-gray-700' }}">{{ perf.profit_factor }}</span>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <svg class="stat-icon" fill="currentColor" viewBox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+            <span class="block text-xs font-bold text-gray-400 uppercase mb-1">سود/زیان محقق شده</span>
+            <div class="flex items-end gap-1">
+                <span class="text-2xl font-black {{ 'text-green-600' if perf.total_pnl >= 0 else 'text-red-500' }} dir-ltr">
+                    {{ perf.total_pnl | currency | persian_num }}
+                </span>
+                <span class="text-[10px] text-gray-400 mb-1">ریال</span>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <svg class="stat-icon" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 9h-2V7h-2v5H6v2h2v5h2v-5h2v-2zm5 0h-2V7h-2v5h-2v2h2v5h2v-5h2v-2z"/></svg>
+            <span class="block text-xs font-bold text-gray-400 uppercase mb-1">تعداد معاملات بسته شده</span>
+            <div class="flex items-end gap-1">
+                <span class="text-3xl font-black text-gray-700">{{ perf.total_trades | persian_num }}</span>
+                <span class="text-sm font-bold text-gray-400 mb-1">عدد</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col items-center justify-center">
+            <h3 class="font-bold text-gray-800 mb-4 text-sm">توزیع معاملات</h3>
+            <div class="w-48 h-48 relative">
+                <canvas id="winLossChart"></canvas>
+                <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span class="text-2xl font-black text-[#1E293B]">{{ perf.total_trades | persian_num }}</span>
+                    <span class="text-[10px] text-gray-400">کل</span>
+                </div>
+            </div>
+            <div class="flex gap-6 mt-6">
+                <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full bg-[#84dcc6]"></span>
+                    <span class="text-xs font-bold text-gray-600">سودده: {{ perf.win_count | persian_num }}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full bg-[#ff686b]"></span>
+                    <span class="text-xs font-bold text-gray-600">زیان‌ده: {{ perf.loss_count | persian_num }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-2 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+            <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                <h3 class="font-bold text-gray-800 text-sm">تاریخچه معاملات بسته شده</h3>
+                <span class="text-[10px] text-gray-400 bg-white px-2 py-1 rounded border border-gray-200">فقط فروش‌های تکمیل شده</span>
+            </div>
+            
+            <div class="overflow-y-auto custom-scrollbar flex-1 max-h-[400px]">
+                <table class="w-full text-right chic-table">
+                    <thead class="sticky top-0 bg-gray-50 shadow-sm">
+                        <tr>
+                            <th class="text-center">نماد</th>
+                            <th class="text-center">تاریخ خروج</th>
+                            <th class="text-center">نتیجه</th>
+                            <th class="text-center">سود/زیان (ریال)</th>
+                            <th class="text-center">درصد</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for t in perf.trades_history %}
+                        <tr class="hover:bg-gray-50 transition">
+                            <td class="p-3 font-bold text-gray-800 pr-6">{{ t.symbol }}</td>
+                            <td class="p-3 text-center text-xs text-gray-500 font-mono dir-ltr">{{ t.date | jalali | persian_num }}</td>
+                            <td class="p-3 text-center">
+                                {% if t.result == 'win' %}
+                                    <span class="bg-green-50 text-green-600 px-2 py-1 rounded text-[10px] font-bold border border-green-100">سود</span>
+                                {% else %}
+                                    <span class="bg-red-50 text-red-600 px-2 py-1 rounded text-[10px] font-bold border border-red-100">زیان</span>
+                                {% endif %}
+                            </td>
+                            <td class="p-3 text-center font-bold dir-ltr {{ 'text-green-600' if t.pnl > 0 else 'text-red-500' }}">
+                                {{ '+' if t.pnl > 0 else '' }}{{ t.pnl | currency | persian_num }}
+                            </td>
+                            <td class="p-3 text-center font-bold text-xs dir-ltr {{ 'text-green-600' if t.pnl_percent > 0 else 'text-red-500' }}">
+                                {{ t.pnl_percent | round(2) | persian_num }}%
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-12 text-gray-400">
+                                هنوز هیچ معامله‌ای بسته نشده است.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // نمودار دونات (Win/Loss)
+    const ctx = document.getElementById('winLossChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['سودده', 'زیان‌ده'],
+            datasets: [{
+                data: [{{ perf.win_count }}, {{ perf.loss_count }}],
+                backgroundColor: ['#84dcc6', '#ff686b'],
+                borderWidth: 0,
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '75%', // ضخامت دونات
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#1e293b',
+                    titleFont: { family: 'Yekan' },
+                    bodyFont: { family: 'Yekan' }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

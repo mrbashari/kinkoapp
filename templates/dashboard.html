@@ -1,0 +1,462 @@
+{% extends "base.html" %}
+
+{% block title %}کینکو - مدیریت پرتفوی{% endblock %}
+
+{% block content %}
+
+<!-- استایل‌های اختصاصی این صفحه (که جنبه عمومی ندارند) -->
+<style>
+    .static-text { cursor: default; user-select: none; }
+    .dashboard-grid { display: grid; grid-template-columns: 1fr 370px; gap: 24px; align-items: start; }
+    @media (max-width: 1024px) { .dashboard-grid { grid-template-columns: 1fr; } }
+
+    .portfolio-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+    .portfolio-card { background: white; border: 1px solid #f1f5f9; border-radius: 16px; padding: 20px; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; }
+    .portfolio-card:hover { transform: translateY(-4px); box-shadow: 0 15px 30px -10px rgba(0,0,0,0.05); border-color: #e2e8f0; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-left: 6px; }
+
+    .sidebar-widget { background: white; border: 1px solid #f1f5f9; border-radius: 16px; padding: 24px; margin-bottom: 24px; }
+    .widget-title { font-weight: 800; color: #334155; font-size: 0.9rem; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f8fafc; padding-bottom: 12px; }
+    
+    .watchlist-item { padding: 12px 0; border-bottom: 1px dashed #f1f5f9; display: flex; justify-content: space-between; align-items: center; transition: background 0.1s; cursor: pointer; }
+    .watchlist-item:hover .line { color: #5E2BFF; }
+    .watchlist-item:last-child { border-bottom: none; }
+    
+    .tag-badge { font-size: 9px; padding: 2px 8px; border-radius: 6px; font-weight: bold; margin-right: 6px; }
+    .tag-personal { background: #f0fdf4; color: #166534; }
+    .tag-public { background: #eff6ff; color: #1e40af; }
+
+    .quick-btn { width: 100%; background: #1e293b; color: white; padding: 16px; border-radius: 16px; font-weight: 700; font-size: 0.95rem; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.2s; margin-bottom: 24px; box-shadow: 0 4px 6px -1px rgba(30, 41, 59, 0.1); }
+    .quick-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(30, 41, 59, 0.2); background: #0f172a; }
+
+    .event-date-box { min-width: 3.5rem; height: 3.5rem; display: flex; flex-direction: column; align-items: center; justify-content: center; background: white; border: 1px solid #e2e8f0; border-radius: 12px; }
+</style>
+
+<div class="dashboard-grid">
+    
+    <!-- ستون اصلی (راست) -->
+    <div class="order-1">
+        <div class="mb-8 flex justify-between items-end">
+            <div class="static-text">
+                <h1 class="text-2xl font-black text-gray-800 tracking-tight">داشبورد معاملاتی</h1>
+                <p class="text-sm text-gray-400 font-medium mt-1">نگاهی کلی به وضعیت دارایی‌ها و عملکرد</p>
+            </div>
+            <div class="text-left hidden sm:block static-text bg-white px-4 py-2 rounded-2xl border border-gray-100 shadow-sm">
+                <span class="block text-[10px] text-gray-400 font-bold uppercase mb-0.5">کل دارایی تحت مدیریت</span>
+                <span class="text-lg font-black text-gray-800 tracking-tight">{{ total_aum | currency | persian_num }} <span class="text-[10px] text-gray-400 font-medium">ریال</span></span>
+            </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="bg-white rounded-[24px] border border-gray-100 mb-10 overflow-hidden shadow-sm">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 divide-y md:divide-y-0 md:divide-x md:divide-x-reverse divide-gray-50">
+                <!-- تعداد معاملات -->
+                <div class="p-6 flex items-center justify-between group hover:bg-gray-50/50 transition">
+                    <div>
+                        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">تعداد معاملات</span>
+                        <div class="flex items-baseline gap-1">
+                            <span class="text-2xl font-black text-slate-700">{{ agg_perf.total_trades | default(0) | persian_num }}</span>
+                            <span class="text-[10px] text-gray-400">تراکنش</span>
+                        </div>
+                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-slate-50 text-slate-400 flex items-center justify-center group-hover:bg-white group-hover:shadow-sm transition">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5L7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5" /></svg>
+                    </div>
+                </div>
+
+                <!-- سود/زیان کل -->
+                <div class="p-6 flex items-center justify-between group hover:bg-gray-50/50 transition">
+                    <div>
+                        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">سود/زیان محقق شده</span>
+                        <div class="flex items-baseline gap-1">
+                            <span class="text-2xl font-black dir-ltr {{ 'text-emerald-500' if agg_perf.total_pnl >= 0 else 'text-rose-500' }}">
+                                {{ agg_perf.total_pnl | default(0) | currency | persian_num }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center group-hover:bg-white group-hover:shadow-sm transition">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </div>
+                </div>
+
+                <!-- فاکتور سود -->
+                <div class="p-6 flex items-center justify-between group hover:bg-gray-50/50 transition">
+                    <div>
+                        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">فاکتور سود (PF)</span>
+                        <span class="text-2xl font-black text-slate-700">{{ agg_perf.profit_factor | default(0) | round(2) | persian_num }}</span>
+                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center group-hover:bg-white group-hover:shadow-sm transition">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5M9 11.25v1.5M12 9v3.75m3-6v6" /></svg>
+                    </div>
+                </div>
+
+                <!-- نرخ برد -->
+                <div class="p-6 flex items-center justify-between group hover:bg-gray-50/50 transition">
+                    <div>
+                        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">نرخ موفقیت (Win Rate)</span>
+                        <span class="text-2xl font-black {{ 'text-emerald-500' if agg_perf.win_rate >= 50 else 'text-orange-500' }}">
+                            %{{ agg_perf.win_rate | default(0) | round(1) | persian_num }}
+                        </span>
+                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-500 flex items-center justify-center group-hover:bg-white group-hover:shadow-sm transition">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- لیست سبدها -->
+        <div>
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="font-black text-gray-800 text-lg flex items-center gap-2">
+                    <span class="w-1.5 h-5 bg-[#5E2BFF] rounded-full"></span>
+                    سبدهای فعال
+                </h3>
+                <a href="/portfolios/manage" class="text-xs font-bold text-[#5E2BFF] bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition">مدیریت سبدها</a>
+            </div>
+
+            <div class="portfolio-grid">
+                {% for p in portfolios %}
+                <div class="portfolio-card group cursor-pointer" onclick="window.location.href='/portfolio/{{ p.id }}'">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="status-dot {{ 'bg-emerald-400' if p.pl_percent >= 0 else 'bg-rose-500' }}"></span>
+                                <h4 class="font-bold text-gray-800 text-sm truncate max-w-[140px]">{{ p.name }}</h4>
+                            </div>
+                            <span class="text-[10px] text-gray-400 bg-gray-50 px-2 py-0.5 rounded border border-gray-100">{{ p.manager }}</span>
+                        </div>
+                        <span class="text-xs font-black dir-ltr bg-gray-50 px-2 py-1 rounded-lg {{ 'text-green-600' if p.pl_percent >= 0 else 'text-red-500' }}">
+                            {{ '+' if p.pl_percent > 0 }}{{ p.pl_percent | round(1) | persian_num }}%
+                        </span>
+                    </div>
+                    
+                    <div class="flex justify-between items-end pt-3 border-t border-gray-50">
+                        <div>
+                            <span class="block text-[10px] text-gray-400 mb-0.5 font-bold">ارزش دارایی</span>
+                            <span class="font-black text-gray-700 text-sm">{{ p.total_value | currency | persian_num }} <span class="text-[9px] text-gray-400 font-medium">ریال</span></span>
+                        </div>
+                        <div class="w-8 h-8 rounded-full bg-gray-50 text-gray-400 flex items-center justify-center group-hover:bg-[#5E2BFF] group-hover:text-white transition">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="col-span-full text-center py-12 bg-gray-50 border border-dashed border-gray-200 rounded-2xl">
+                    <p class="text-gray-400 text-sm mb-4 font-bold">هیچ سبدی یافت نشد.</p>
+                    <a href="/portfolios/manage" class="text-white bg-[#5E2BFF] text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-indigo-700 transition">ایجاد اولین سبد</a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ستون سایدبار (چپ) -->
+    <div class="order-2">
+        
+        <button onclick="openQuickTradeModal()" class="quick-btn group">
+            <div class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center group-hover:scale-110 transition">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+            </div>
+            ثبت تراکنش سریع
+        </button>
+
+        <!-- دیده بان -->
+        <div class="sidebar-widget">
+            <h3 class="widget-title">
+                <span class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.415 3.01 9.964 7.185.073.2.073.421 0 .639C20.415 16.49 16.638 19.5 12 19.5c-4.638 0-8.575-3.01-9.964-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    دیده‌بان هوشمند
+                </span>
+                {% if watchlist %}<span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>{% endif %}
+            </h3>
+            
+            {% if watchlist %}
+                <div class="space-y-1">
+                    {% for alert in watchlist %}
+                    <div class="watchlist-item group" onclick="window.location.href='/analysis'">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="font-black text-gray-800 text-sm line">{{ alert.symbol }}</span>
+                                <span class="tag-badge {{ 'tag-personal' if alert.is_mine else 'tag-public' }}">{{ alert.tag }}</span>
+                            </div>
+                            <span class="text-[10px] text-gray-400 block font-medium">{{ alert.status }}</span>
+                        </div>
+                        <div class="text-left">
+                            <span class="block font-bold text-xs text-gray-600">{{ alert.current_price | currency | persian_num }}</span>
+                            <span class="text-[9px] text-gray-400 block mt-0.5">هدف: {{ alert.target_val | currency | persian_num }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-8 text-gray-300 text-xs flex flex-col items-center">
+                    <svg class="w-10 h-10 mb-2 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    هیچ سیگنال فعالی نیست.
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- تقویم -->
+        <div class="sidebar-widget">
+            <h3 class="widget-title">
+                <span class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
+                    رویدادهای پیش‌رو
+                </span>
+                <a href="/calendar/global" class="text-[10px] bg-yellow-50 text-yellow-700 px-2 py-1 rounded-lg font-bold hover:bg-yellow-100 transition">مشاهده کامل</a>
+            </h3>
+            
+            {% if all_events %}
+                {% for event in all_events %}
+                <div class="flex mb-3 gap-3 p-3 bg-gray-50/50 rounded-2xl border border-gray-100/50 hover:bg-white hover:shadow-sm transition group cursor-default">
+                    <!-- باکس تاریخ (تبدیل شده در JS) -->
+                    <div class="event-date-box shrink-0" data-date="{{ event.date }}">
+                        <span class="event-month text-[9px] text-gray-400 font-bold leading-none mb-1">-</span>
+                        <span class="event-day text-lg font-black text-gray-700 leading-none">-</span> 
+                    </div>
+
+                    <div class="flex flex-col justify-center flex-1 min-w-0">
+                        <div class="flex justify-between items-start">
+                            <h5 class="text-xs font-bold text-gray-700 truncate max-w-[120px]" title="{{ event.title }}">{{ event.title }}</h5>
+                            <span class="text-[9px] px-1.5 py-0.5 rounded font-bold whitespace-nowrap {{ 'bg-indigo-50 text-indigo-600' if event.portfolio_name else 'bg-gray-100 text-gray-400' }}">
+                                {{ event.portfolio_name if event.portfolio_name else 'عمومی' }}
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="text-[10px] text-gray-400">{{ event.symbol if event.symbol else '---' }}</span>
+                            {% if event.amount and event.amount > 0 %}
+                                <span class="w-1 h-1 rounded-full bg-gray-300"></span>
+                                <span class="text-[10px] font-bold text-emerald-600 dir-ltr">{{ event.amount | currency }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-center py-6 text-gray-400 text-xs">رویدادی در پیش نیست.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- مودال ثبت سریع تراکنش (Quick Trade) -->
+<!-- از همان استایل استاندارد جدید استفاده می‌کنیم -->
+<div id="quickTradeModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onclick="closeQuickTradeModal()"></div>
+    
+    <div class="relative w-full max-w-lg bg-white rounded-3xl overflow-visible p-8 shadow-2xl">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="font-black text-gray-800 text-lg flex items-center gap-2">
+                <span class="w-2 h-6 bg-[#5E2BFF] rounded-full"></span>
+                ثبت تراکنش سریع
+            </h3>
+            <button onclick="closeQuickTradeModal()" class="text-gray-400 hover:text-red-500 transition">✕</button>
+        </div>
+
+        <form action="/transaction/quick_add" method="POST" id="quickTradeForm" onsubmit="return validateQuickForm()">
+            <input type="hidden" name="action_mode" id="actionMode" value="trade">
+
+            <!-- انتخاب سبد (Autocomplete) -->
+            <div class="mb-5 relative z-50">
+                <label class="block text-[11px] font-bold text-gray-400 mb-1.5 pr-1">انتخاب سبد</label>
+                <div class="autocomplete-wrapper relative">
+                    <input type="text" id="quickPortfolioSearch" placeholder="نام سبد را جستجو کنید..." 
+                           class="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3.5 px-4 text-sm font-bold outline-none focus:border-[#5E2BFF] focus:bg-white transition" autocomplete="off">
+                    <input type="hidden" name="portfolio_id" id="quickPortfolioId" required>
+                </div>
+            </div>
+
+            <!-- تب‌ها -->
+            <div class="flex bg-gray-100 p-1.5 rounded-2xl mb-6 relative z-0">
+                <button type="button" onclick="switchMode('trade')" id="btn-trade" class="flex-1 py-2.5 rounded-xl text-xs font-bold transition shadow-sm bg-white text-[#5E2BFF]">خرید / فروش</button>
+                <button type="button" onclick="switchMode('cash')" id="btn-cash" class="flex-1 py-2.5 rounded-xl text-xs font-bold transition text-gray-500 hover:text-gray-700">واریز / برداشت</button>
+            </div>
+
+            <!-- پنل معامله -->
+            <div id="panel-trade">
+                <div class="grid grid-cols-2 gap-4 mb-5">
+                    <label class="cursor-pointer relative">
+                        <input type="radio" name="type" value="buy" checked class="peer hidden" onchange="updateBtnText()">
+                        <div class="py-3 rounded-2xl text-center text-xs font-bold bg-white border-2 border-gray-100 text-gray-400 peer-checked:border-green-500 peer-checked:text-green-600 peer-checked:bg-green-50 transition-all">خرید</div>
+                    </label>
+                    <label class="cursor-pointer relative">
+                        <input type="radio" name="type" value="sell" class="peer hidden" onchange="updateBtnText()">
+                        <div class="py-3 rounded-2xl text-center text-xs font-bold bg-white border-2 border-gray-100 text-gray-400 peer-checked:border-red-500 peer-checked:text-red-600 peer-checked:bg-red-50 transition-all">فروش</div>
+                    </label>
+                </div>
+
+                <div class="mb-5 relative z-40">
+                    <label class="block text-[11px] font-bold text-gray-400 mb-1.5 pr-1">نام نماد</label>
+                    <div class="autocomplete-wrapper relative">
+                        <input type="text" name="symbol" id="quickSymbol" placeholder="جستجو..." 
+                               class="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3.5 px-4 text-sm font-bold outline-none focus:border-[#5E2BFF] focus:bg-white transition" autocomplete="off">
+                    </div>
+                    <input type="hidden" name="asset_class" id="quickAssetClass" value="Stock">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-5">
+                    <div><label class="block text-[11px] font-bold text-gray-400 mb-1.5 pr-1">تعداد</label><input type="text" name="quantity" placeholder="0" class="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3.5 px-4 text-center money-input text-sm font-bold outline-none focus:border-[#5E2BFF] focus:bg-white transition dir-ltr"></div>
+                    <div><label class="block text-[11px] font-bold text-gray-400 mb-1.5 pr-1">قیمت واحد</label><input type="text" name="price" placeholder="0" class="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3.5 px-4 text-center money-input text-sm font-bold outline-none focus:border-[#5E2BFF] focus:bg-white transition dir-ltr"></div>
+                </div>
+            </div>
+
+            <!-- پنل مالی -->
+            <div id="panel-cash" class="hidden">
+                <div class="grid grid-cols-2 gap-4 mb-5">
+                    <label class="cursor-pointer relative"><input type="radio" name="type_cash" value="deposit" checked class="peer hidden" onchange="updateBtnText()"><div class="py-3 rounded-2xl text-center text-xs font-bold bg-white border-2 border-gray-100 text-gray-400 peer-checked:border-blue-500 peer-checked:text-blue-600 peer-checked:bg-blue-50 transition-all">واریز وجه</div></label>
+                    <label class="cursor-pointer relative"><input type="radio" name="type_cash" value="withdraw" class="peer hidden" onchange="updateBtnText()"><div class="py-3 rounded-2xl text-center text-xs font-bold bg-white border-2 border-gray-100 text-gray-400 peer-checked:border-orange-500 peer-checked:text-orange-600 peer-checked:bg-orange-50 transition-all">برداشت وجه</div></label>
+                </div>
+                <div class="mb-5">
+                    <label class="block text-[11px] font-bold text-gray-400 mb-1.5 pr-1">مبلغ کل (ریال)</label>
+                    <input type="text" name="price_cash" placeholder="0" class="w-full bg-blue-50/50 border border-blue-100 rounded-2xl py-4 px-4 text-center money-input text-xl font-black outline-none focus:border-blue-400 focus:bg-white text-blue-700 transition dir-ltr">
+                </div>
+            </div>
+
+                        <!-- فیلد تاریخ) -->
+            <div class="mb-6 relative z-0 focus-within:z-50 transition-all duration-200">
+                <label class="block text-[11px] font-bold text-gray-400 mb-1.5 pr-1">تاریخ</label>
+                <div class="relative">
+                    <!-- اینپوت نمایش تاریخ -->
+                    <input type="text" id="quickDateDisplay" readonly placeholder="تاریخ" 
+                        class="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3.5 px-4 text-center text-sm font-bold cursor-pointer hover:bg-white hover:border-blue-400 transition outline-none" 
+                        onclick="toggleDatepicker('datepicker-quick')">
+                    
+                    <input type="hidden" name="date" id="quickDateInput">
+                    
+                    <!-- بدنه تقویم شناور -->
+                    <div id="datepicker-quick" class="datepicker-dropdown hidden absolute bottom-full mb-2 left-0 right-0 bg-white rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.2)] border border-gray-100 p-4">
+                        
+                        <!-- هدر تقویم (دکمه‌های ماه) -->
+                        <div class="flex justify-between items-center mb-3">
+                            <button type="button" onclick="event.stopPropagation(); changeQuickMonth(-1)" class="p-1.5 hover:bg-gray-100 rounded-lg transition text-gray-500">❮</button>
+                            <span id="quickMonthLabel" class="text-sm font-black text-gray-700 select-none"></span>
+                            <button type="button" onclick="event.stopPropagation(); changeQuickMonth(1)" class="p-1.5 hover:bg-gray-100 rounded-lg transition text-gray-500">❯</button>
+                        </div>
+                        
+                        <!-- نام روزهای هفته (ثابت) -->
+                        <div class="grid grid-cols-7 text-center gap-1 text-[10px] text-gray-400 font-bold mb-2 select-none">
+                            <span>ش</span><span>ی</span><span>د</span><span>س</span><span>چ</span><span>پ</span><span class="text-red-400">ج</span>
+                        </div>
+                        <div id="q-days-grid" class="grid grid-cols-7 gap-1 text-center"></div>
+                    </div>
+                </div>
+            </div>
+
+
+
+            <button type="submit" id="mainSubmitBtn" class="w-full bg-[#1E293B] hover:bg-slate-800 text-white py-4 rounded-2xl font-bold text-sm transition shadow-lg shadow-slate-200 flex items-center justify-center gap-2">
+                <span>ثبت نهایی</span>
+            </button>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/jalaali-js/dist/jalaali.js"></script>
+
+<script>
+    // 1. داده‌های مورد نیاز
+    const marketSymbols = [{% for item in market_data %}{ symbol: "{{ item.symbol }}", name: "{{ item.company_name }}", type: "{{ item.asset_type }}" },{% endfor %}];
+    const portfolioList = [{% for p in portfolios %}{ id: "{{ p.id }}", name: "{{ p.name }}", manager: "{{ p.manager }}" },{% endfor %}];
+
+    // 2. مدیریت مودال
+    function openQuickTradeModal() { document.getElementById('quickTradeModal').classList.remove('hidden'); switchMode('trade'); initQuickDatepicker(); }
+    function closeQuickTradeModal() { document.getElementById('quickTradeModal').classList.add('hidden'); }
+
+    // 3. اعتبارسنجی
+    function validateQuickForm() {
+        const pId = document.getElementById('quickPortfolioId').value;
+        if (!pId) { alert("لطفاً نام سبد را انتخاب کنید."); return false; }
+        return true;
+    }
+
+    // 4. سوییچ مود (معامله / مالی)
+    function switchMode(mode) {
+        document.getElementById('actionMode').value = mode;
+        const pt = document.getElementById('panel-trade'); const pc = document.getElementById('panel-cash');
+        const bt = document.getElementById('btn-trade'); const bc = document.getElementById('btn-cash');
+        
+        if (mode === 'trade') {
+            pt.classList.remove('hidden'); pc.classList.add('hidden');
+            bt.className = "flex-1 py-2.5 rounded-xl text-xs font-bold transition shadow-sm bg-white text-[#5E2BFF]";
+            bc.className = "flex-1 py-2.5 rounded-xl text-xs font-bold transition text-gray-500 hover:text-gray-700";
+        } else {
+            pt.classList.add('hidden'); pc.classList.remove('hidden');
+            bc.className = "flex-1 py-2.5 rounded-xl text-xs font-bold transition shadow-sm bg-white text-[#5E2BFF]";
+            bt.className = "flex-1 py-2.5 rounded-xl text-xs font-bold transition text-gray-500 hover:text-gray-700";
+        }
+        updateBtnText();
+    }
+
+    function updateBtnText() {
+        const mode = document.getElementById('actionMode').value;
+        const btn = document.getElementById('mainSubmitBtn');
+        if (!btn) return;
+        if (mode === 'trade') {
+            const type = document.querySelector('input[name="type"]:checked')?.value || 'buy';
+            btn.innerHTML = (type === 'buy') ? "<span>ثبت خرید</span>" : "<span>ثبت فروش</span>";
+            btn.className = (type === 'buy') ? "w-full bg-green-600 hover:bg-green-700 text-white py-4 rounded-2xl font-bold text-sm transition shadow-lg shadow-green-200" : "w-full bg-red-500 hover:bg-red-600 text-white py-4 rounded-2xl font-bold text-sm transition shadow-lg shadow-red-200";
+        } else {
+            const type = document.querySelector('input[name="type_cash"]:checked')?.value || 'deposit';
+            btn.innerHTML = (type === 'deposit') ? "<span>ثبت واریز</span>" : "<span>ثبت برداشت</span>";
+            btn.className = (type === 'deposit') ? "w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-bold text-sm transition shadow-lg shadow-blue-200" : "w-full bg-orange-500 hover:bg-orange-600 text-white py-4 rounded-2xl font-bold text-sm transition shadow-lg shadow-orange-200";
+        }
+    }
+
+    // 5. تقویم (متصل به main.js)
+    let qYear, qMonth;
+    function initQuickDatepicker() {
+        const now = new Date(); const jNow = jalaali.toJalaali(now);
+        qYear = jNow.jy; qMonth = jNow.jm;
+        const dInput = document.getElementById('quickDateInput');
+        if(dInput) dInput.value = now.toISOString().split('T')[0];
+        document.getElementById('quickDateDisplay').value = toPersianNum(`${jNow.jy}/${String(jNow.jm).padStart(2,'0')}/${String(jNow.jd).padStart(2,'0')}`);
+        renderCalendar('q-days-grid', qYear, qMonth, 'quickDateDisplay', 'quickDateInput', 'datepicker-quick', 'quickMonthLabel');
+    }
+    
+    function changeQuickMonth(offset) { qMonth += offset; if(qMonth > 12){qMonth=1;qYear++}else if(qMonth<1){qMonth=12;qYear--} renderQuickCalendar(); }
+    
+    function renderQuickCalendar() {
+        renderCalendar(
+            'q-days-grid',       // آیدی شبکه‌ی روزها (فقط این بخش پاک و دوباره پر می‌شود)
+            qYear, 
+            qMonth, 
+            'quickDateDisplay', 
+            'quickDateInput', 
+            'datepicker-quick', 
+            'quickMonthLabel'    // آیدی متنی که نام ماه را نشان می‌دهد
+        );
+    }
+
+    // 6. راه‌اندازی Autocomplete مرکزی
+    document.addEventListener('DOMContentLoaded', () => {
+        // جستجوی سبد
+        initGlobalAutocomplete('quickPortfolioSearch', portfolioList, (item) => {
+            document.getElementById('quickPortfolioId').value = item.id;
+        });
+        
+        // جستجوی نماد
+        initGlobalAutocomplete('quickSymbol', marketSymbols, (item) => {
+            let at = 'Stock';
+            if (item.type && (item.type.includes('Gold') || item.type.includes('طلا'))) at = 'Gold';
+            else if (item.type && (item.type.includes('Fixed') || item.type.includes('ثابت'))) at = 'Fixed';
+            document.getElementById('quickAssetClass').value = at;
+        });
+
+        // تبدیل تاریخ‌های میلادی رویدادها به شمسی
+        document.querySelectorAll('.event-date-box').forEach(box => {
+            const gDate = box.getAttribute('data-date');
+            if (!gDate) return;
+            try {
+                const parts = gDate.split('-');
+                const jDate = jalaali.toJalaali(parseInt(parts[0]), parseInt(parts[1]), parseInt(parts[2]));
+                box.querySelector('.event-month').textContent = monthNames[jDate.jm - 1];
+                box.querySelector('.event-day').textContent = toPersianNum(jDate.jd);
+            } catch (e) {}
+        });
+    });
+</script>
+{% endblock %}

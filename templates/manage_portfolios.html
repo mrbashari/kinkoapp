@@ -1,0 +1,594 @@
+{% extends "base.html" %}
+
+{% block title %}مدیریت پرتفوی‌ها{% endblock %}
+
+{% block content %}
+
+    <style>
+        #fixed-status-bar{
+            right: 80px;
+        }
+    </style>
+    
+    <div class="flex justify-between items-center mb-8 border-b pb-6">
+        <div class="flex flex-row items-center gap-2">
+            <h1 class="text-[16px] font-black text-gray-800">مدیریت پرتفوی‌ها</h1>
+            <p class="text-[14px] text-gray-500">| ایجاد، ویرایش و حذف سبد مشتریان</p>
+        </div>
+        <div class="flex flex-row gap-4 items-center">
+            <div>
+                <div class="relative w-[350px] max-w-sm">
+                    <input type="text" id="portfolioSearchInput" placeholder="جستجو بر اساس نام یا کد ملی ..." 
+                        class="w-full pl-10 pr-4 py-2.5 bg-white border-2 border-gray-200 rounded-md text-sm font-medium outline-none transition">
+                    <svg class="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+            </div>
+            <button type="button" onclick="openCreateModal()" class="bg-[#1E293B] text-white px-6 py-2.5 rounded-md font-medium hover:bg-[#5E2BFF] transition flex items-center gap-2 text-sm cursor-pointer z-10">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                افتتاح پرتفوی جدید
+            </button>
+        </div>
+    </div>
+
+    <!-- جدول لیست پرتفوی‌ها -->
+    <div class="bg-white rounded-sm border border-gray-200 overflow-hidden">
+        <table class="w-full text-right table-fixed">
+            <thead class="bg-neutral-50 border-b border-gray-200">
+                <tr>
+                    <th class="p-4 font-medium text-sm text-gray-500 text-center w-[3%]">#</th>
+                    <th class="p-4 font-medium text-sm text-gray-500 text-center w-[5%]">شناسه</th>
+                    <th class="p-4 font-medium text-sm text-gray-500 text-right pr-6 w-[20%]">نام پرتفوی</th>
+                    <th class="p-4 font-medium text-sm text-gray-500 text-center w-[10%]">کد ملی</th> <!-- بازگشت کد ملی -->
+                    <th class="p-4 font-medium text-sm text-gray-500 text-center w-[10%]">کارگزاری</th>
+                    <th class="p-4 font-medium text-sm text-gray-500 text-center w-[10%]">ریسک</th>
+                    <th class="p-4 font-medium text-sm text-gray-500 text-center w-[10%]">مدیر</th>
+                    <th class="p-4 font-medium text-sm text-gray-500 text-center w-[15%]">سرمایه اولیه</th>
+                    <th class="p-4 font-medium text-sm text-gray-500 text-center w-[10%]">ارزش فعلی</th>
+                    <th class="p-4 font-medium text-sm text-gray-500 text-center w-[10%]">عملیات</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 text-sm">
+                {% if portfolios %}
+                    {% for p in portfolios %}
+                    <tr data-national-id="{{ p.national_id if p.national_id else '' }}" class="hover:bg-gray-50 transition group">
+                        <td class="p-4 text-gray-500 text-sm text-center">{{ loop.index }}</td>
+                        <td class="p-4 text-gray-400 text-sm text-center">#{{ p.id }}</td>
+                        <td class="p-4 font-bold text-gray-800 text-right pr-6 truncate" title="{{ p.name }}">{{ p.name }}</td>
+                        <td class="p-4 text-center font-mono text-sm text-gray-500 tracking-wider">{{ p.national_id if p.national_id else '---' }}</td>
+                        <!-- نمایش صحیح کارگزاری -->
+                        <td class="p-4 text-center text-sm text-gray-500 font-medium rounded-lg mx-1 truncate">{{ p.broker if p.broker else '---' }}</td>
+                        <td class="p-4 text-center">
+                            {% if p.risk_level == 'Low' %}
+                                <span class="inline-flex items-center gap-1 bg-emerald-100 text-emerald-600 px-2 py-1 rounded text-[12px] font-medium border border-emerald-300">کم‌ریسک</span>
+                            {% elif p.risk_level == 'Medium' %}
+                                <span class="inline-flex items-center gap-1 bg-amber-100 text-amber-600 px-2 py-1 rounded text-[12px] font-medium border border-amber-300">متعادل</span>
+                            {% else %}
+                                <span class="inline-flex items-center gap-1 bg-rose-100 text-rose-600 px-2 py-1 rounded text-[12px] font-medium border border-rose-300">پرریسک</span>
+                            {% endif %}
+                        </td>
+                        <td class="p-4 text-gray-600 text-center text-xs truncate">{{ p.manager }}</td>
+                        <td class="p-4 text-gray-600 font-bold text-center">{{ p.initial_capital | currency | persian_num }}</td>
+                        <td class="p-4 font-bold text-[#1E293B] text-center">{{ p.total_value | currency | persian_num }}</td>
+                        <td class="p-4 flex justify-center items-center gap-3">
+                            <a href="/portfolio/{{ p.id }}" title="جزئیات">
+                                <svg class="w-5 h-5 text-gray-400 hover:text-teal-500 duration-300" fill="none" viewBox="0 0 24 24">
+                                 <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M18 14v4.833A1.166 1.166 0 0 1 16.833 20H5.167A1.167 1.167 0 0 1 4 18.833V7.167A1.166 1.166 0 0 1 5.167 6h4.618m4.447-2H20v5.768m-7.889 2.121 7.778-7.778"/>
+                                </svg>
+                            </a>
+                            <button onclick="openEditModalFromData(this)" 
+                                    data-id="{{ p.id }}"
+                                    data-name="{{ p.name }}"
+                                    data-manager="{{ p.manager }}"
+                                    data-capital="{{ p.initial_capital }}"
+                                    data-date="{{ p.delivery_date }}"
+                                    data-desc="{{ p.description }}"
+                                    data-index="{{ p.initial_index }}"
+                                    data-broker="{{ p.broker }}"
+                                    data-national-id="{{ p.national_id }}"
+                                    data-risk-level="{{ p.risk_level }}"
+                                    title="ویرایش">
+                                <svg class="w-6 h-6 text-gray-400 hover:text-blue-500 duration-300" fill="none" viewBox="0 0 24 24">
+                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m14.304 4.844 2.852 2.852M7 7H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-4.5m2.409-9.91a2.017 2.017 0 0 1 0 2.853l-6.844 6.844L8 14l.713-3.565 6.844-6.844a2.015 2.015 0 0 1 2.852 0Z"/>
+                                </svg>
+                            </button>
+                            <button onclick="openDeletePortfolioModal('{{ p.id }}', '{{ p.name }}')" title="حذف">
+                                <svg class="w-5 h-5 text-gray-400 hover:text-rose-500 duration-300" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr><td colspan="9" class="text-center py-12"><div class="flex flex-col items-center justify-center text-gray-400"><svg class="w-16 h-16 mb-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg><span class="text-[16px] mb-5 font-medium">هیچ پرتفویی یافت نشد.</span><button onclick="openCreateModal()" class="mt-4 text-gray-400 text-[14px] font-bold border-2 rounded-full px-4 py-2 hover:bg-gray-100 duration-300">افتتاح اولین پرتفوی</button></div></td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Create Modal -->
+    <div id="createModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 backdrop-blur-sm transition-opacity" onclick="closeCreateModal()"></div>
+        <div class="relative w-full max-w-6xl bg-white rounded-md shadow-2xl overflow-hidden flex flex-col h-[760px] p-8">
+            <div class="px-8 py-4 border-b border-gray-100 flex justify-between items-center">
+                <div class=" flex flex-row items-center mb-2"><h3 class="text-[16px] font-[800] text-gray-800" style="word-spacing: -1px;">ثبت پرتفوی جدید</h3>
+                    <p class="text-[16px] mr-2 text-gray-400 mt-0.5">اطلاعات پرتفوی را وارد کنید.</p></div>
+                <div class="flex items-center gap-1.5"><span id="step1-indicator" class="w-3.5 h-3.5 rounded-full bg-[#5E2BFF] transition-all"></span><span class="w-6 h-0.5 bg-gray-200"></span><span id="step2-indicator" class="w-3.5 h-3.5 rounded-full bg-gray-300 transition-all"></span></div>
+            </div>
+
+            <form method="POST" id="addPortfolioForm" class="flex-1 flex flex-col overflow-hidden relative">
+                <input type="hidden" name="stocks_json" id="stocksJsonInput">
+                
+                <div class="flex-1 overflow-hidden relative bg-white">
+                    <!-- Step 1 -->
+                    <div id="step1" class="transition-all duration-300 h-full overflow-y-auto p-8 custom-scrollbar">
+                        <div class="max-w-5xl mx-auto">
+                            <h4 class="font-bold text-gray-700 mb-6 flex items-center gap-2 border-b border-gray-100 pb-3"><span class="flex items-center justify-center w-6 h-6 rounded-lg bg-indigo-100 text-[#5E2BFF] text-xs font-bold">1</span>مشخصات پایه</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div class="relative input-group"><label class="block text-[14px] font-medium text-gray-400 uppercase mb-4"><span class="font-bold text-blue-600">|</span> نام مشتری</label><input type="text" name="name" id="inputName" placeholder="نام و نام‌خانوادگی" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-md focus:bg-white text-[14px] font-medium outline-none transition required-field"><div class="validation-tooltip">الزامی‌ست.</div></div>
+                                <div class="relative input-group"><label class="block text-[14px] font-medium text-gray-400 uppercase mb-4"><span class="font-bold text-blue-600">|</span> کد ملی</label><input type="text" name="national_id" maxlength="10" placeholder="کد ملی" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-md focus:bg-white text-[14px] font-medium text-right dir-ltr tracking-widest outline-none transition"></div>
+                                
+                                <div class="relative input-group"><label class="block text-[14px] font-medium text-gray-400 uppercase mb-4"><span class="font-bold text-blue-600">|</span> مدیر سبد</label>
+                                    <div class="custom-select-container">
+                                        <button type="button" class="select-trigger" onclick="toggleSelect(this)"><span class="selected-text text-[14px] font-medium text-gray-400">معامله‌گر را انتخاب کنید.</span><svg class="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M19 9l-7 7-7-7"/></svg></button>
+                                        <div class="select-options">{% for m in managers %}<div class="select-option" onclick="selectOption(this, 'managerInput', '{{ m.full_name }}')">{{ m.full_name }}</div>{% endfor %}</div><input type="hidden" name="manager" id="managerInput" value="{{ current_user.full_name }}">
+                                    </div>
+                                </div>
+                                
+                                <div class="relative input-group"><label class="block text-[14px] font-medium text-gray-400 uppercase mb-4"><span class="font-bold text-blue-600">|</span> کارگزاری</label><input type="text" name="broker" placeholder="نام کارگزاری" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-md focus:bg-white text-[14px] font-medium outline-none transition"></div>
+                                
+                                <div class="relative input-group"><label class="block text-[14px] font-medium text-gray-400 uppercase mb-4"><span class="font-bold text-blue-600">|</span> تاریخ دریافت</label><div class="relative"><input type="text" id="dateDisplay" readonly placeholder="- - / - - / - -" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white text-[14px] text-center text-gray-700 cursor-pointer outline-none transition required-field" onclick="toggleDatepicker('datepicker-create')"><input type="hidden" name="delivery_date" id="dateInput"><div class="validation-tooltip">الزامی‌ست.</div><div id="datepicker-create" class="datepicker-dropdown hidden absolute top-full right-0 mt-1 bg-white rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] border border-gray-100 p-3 z-[100]"><div class="flex justify-between items-center mb-3"><button type="button" onclick="event.stopPropagation(); changeMonth(-1)" class="p-1 hover:bg-gray-100 rounded text-gray-500">❮</button><span id="currentMonthLabel" class="text-xs font-bold"></span><button type="button" onclick="event.stopPropagation(); changeMonth(1)" class="p-1 hover:bg-gray-100 rounded text-gray-500">❯</button></div><div class="grid grid-cols-7 text-center mb-1 text-[10px] text-gray-400"><span>ش</span><span>ی</span><span>د</span><span>س</span><span>چ</span><span>پ</span><span class="text-custom-red">ج</span></div><div id="calendarDays" class="grid grid-cols-7 gap-1 text-center"></div></div></div></div>
+                                
+                                <div class="relative"><label class="block text-[14px] mb-3 font-medium text-gray-400 uppercase mb-1"><span class="font-bold text-blue-600">|</span> سطح ریسک</label><div class="custom-select-container"><button type="button" class="select-trigger" onclick="toggleSelect(this)"><span class="selected-text text-gray-700">متعادل</span><svg class="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></button><div class="select-options"><div class="select-option" onclick="selectOption(this, 'riskInput', 'Low')">کم‌ریسک</div><div class="select-option selected" onclick="selectOption(this, 'riskInput', 'Medium')">متعادل</div><div class="select-option" onclick="selectOption(this, 'riskInput', 'High')">جسورانه</div></div><input type="hidden" name="risk_level" id="riskInput" value="Medium"></div></div>
+                                <div class="md:col-span-3"><label class="block text-[14 px] mb-3 font-medium text-gray-400 uppercase mb-1"><span class="font-bold text-blue-600">|</span> توضیحات</label><input type="text" name="description" placeholder="توضیحات تکمیلی" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white text-sm outline-none transition"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 2 -->
+                    <div id="step2" class="hidden opacity-0 transition-all duration-300 h-full flex flex-col md:flex-row gap-6 py-4">
+                        <div class="w-full md:w-3/4 flex flex-col h-full bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden order-1 md:order-2">
+                            <div class="px-5 py-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center"><h4 class="font-bold text-gray-700 flex items-center gap-2"><span class="flex items-center justify-center w-6 h-6 rounded-lg bg-indigo-100 text-[#5E2BFF] text-xs font-bold">2</span>ترکیب دارایی‌ها</h4><span class="text-[12px] text-gray-400 px-4 py-2 rounded border border-gray-200">نمادهای فعلی مشتری را وارد کنید.</span></div>
+                            <div class="overflow-y-auto custom-scrollbar flex-1 bg-white relative">
+                                <table class="w-full text-right chic-table" id="stocksTable"><thead class="sticky top-0 z-10 bg-slate-50 border-b border-slate-200 shadow-sm"><tr><th class="w-[40%] text-center">نام نماد</th><th class="w-[10%] text-center">تعداد</th><th class="w-[10%] text-center">قیمت واحد</th><th class="w-[20%] text-center">ارزش کل</th><th class="w-[10%] text-center"></th></tr></thead><tbody id="stocksBody" class="divide-y divide-gray-50"></tbody></table>
+                            </div>
+                            
+                            <!-- دکمه‌های دوگانه -->
+                            <div class="flex border-t border-gray-200">
+                                <label class="flex-1 py-3.5 bg-gray-50 hover:bg-green-50 text-green-600 text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer border-l border-gray-200 relative group">
+                                    <input type="file" id="excelUpload" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleExcelUpload(this)">
+                                    <span id="uploadLabel" class="flex items-center gap-2 group-hover:scale-105 transition"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>بارگذاری اکسل</span>
+                                    <span id="uploadLoading" class="hidden flex items-center gap-2"><svg class="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>در حال پردازش...</span>
+                                </label>
+                                <button type="button" onclick="addStockRow()" class="flex-1 py-3.5 bg-gray-50 hover:bg-slate-100 text-[#5E2BFF] text-xs font-bold transition flex items-center justify-center gap-2 group"><svg class="w-4 h-4 group-hover:scale-110 transition" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>افزودن دستی</button>
+                            </div>
+                        </div>
+                        
+                        <div class="w-full md:w-1/4 flex flex-col gap-4 shrink-0 order-2 md:order-1">
+                            <div class="bg-white border-2 border-gray-100 rounded-md p-5">
+                                <h5 class="font-bold text-gray-700 mb-4 flex items-center gap-2 text-[12px]">قدرت خرید اولیه</h5>
+                                <!-- اصلاح باگ نمایش: اضافه کردن value -->
+                                <div class="relative input-group mb-1">
+                                    <input type="text" name="initial_cash" id="cashInput" placeholder="۰" oninput="updateTotalCapital()" class="w-full bg-white border border-gray-200 rounded-sm p-3 text-left text-[14px] font-medium text-[#1E293B] focus:outline-none focus:ring-1 focus:ring-gray-400 money-input dir-ltr transition required-field">
+                                    <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-[12px] text-gray-400 font-medium">ریال</span>
+                                    <div class="validation-tooltip" style="right: auto; left: 0;">الزامی</div>
+                                </div>
+                                <div class="mt-4 border-t border-gray-200 pt-4">
+                                    <div class="flex justify-between items-center mb-2"><label class="block text-[12px] font-bold text-[#1E293B]">شاخص کل (مبنا)</label><span id="indexLoading" class="hidden text-[10px] text-blue-600 flex items-center gap-1"><svg class="animate-spin w-3 h-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>دریافت...</span></div>
+                                    <div class="relative input-group"><input type="text" name="initial_index" id="initialIndexInput" placeholder="محاسبه اتوماتیک..." class="w-full bg-white border border-gray-200 rounded-sm p-2.5 text-left text-[14px] font-medium text-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-400 money-input dir-ltr transition disabled:bg-gray-50 disabled:text-gray-400"><span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-[12px] text-gray-400 font-medium">واحد</span></div><p class="text-[10px] text-green-600 mt-1 hidden" id="indexSuccessMsg">✓ دریافت شد</p>
+                                </div>
+                            </div>
+                            <div class="text-[#1E293B] border-2 border-gray-100 rounded-md p-5 mt-auto flex flex-col justify-between min-h-[280px]">
+                                <div><h5 class="font-medium text-gray-400 text-[14px] mb-3 tracking-wider border-b pb-2">خلاصه وضعیت مالی</h5><div class="flex justify-between items-center mb-2 text-[13px] font-medium"><span class="text-gray-400">جمع سهام:</span><span class="font-bold text-gray-500 tracking-wide" id="stocksSumDisplay">۰</span></div><div class="flex justify-between items-center text-[13px] font-medium"><span class="text-gray-400">وجه نقد:</span><span class="font-bold text-gray-500 tracking-wide" id="cashDisplay">۰</span></div></div>
+                                <div class="mt-4 pt-4 border-t border-gray-200"><span class="block text-[12px] font-bold text-gray-500 mb-1">ارزش کل پرتفوی</span><div class="text-14 font-black text-[#1E293B] tracking-tight" id="totalDisplay">۰ <span class="text-[10px] font-normal text-gray-500 align-top mt-1 inline-block">ریال</span></div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-100 bg-white flex justify-end gap-3 z-10 sticky bottom-0">
+                    <button type="button" onclick="closeCreateModal()" class="text-gray-400 hover:text-gray-600 px-4 text-[14px] font-medium border-2 rounded-md" id="cancelBtn">انصراف</button>
+                    <button type="button" id="prevBtn" onclick="prevStep()" class="text-gray-400 hover:text-gray-600 px-4 text-[14px] font-medium border-2 rounded-md">مرحله قبل</button>
+                    <button type="button" id="nextBtn" onclick="if(validateStep1()) nextStep()" class="bg-[#1E293B] text-white px-8 py-2.5 rounded-md font-medium hover:bg-indigo-700 transition text-[14px]">مرحله بعد</button>
+                    <button type="button" id="submitBtn" onclick="submitForm()" class="hidden bg-[#1E293B] text-white px-8 py-2.5 rounded-md font-medium hover:bg-indigo-700 transition text-[14px] transition flex items-center gap-2">ذخیره نهایی</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm transition-opacity" onclick="closeEditModal()"></div>
+        <div class="relative w-full max-w-2xl bg-white rounded-xl shadow-2xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                <h3 class="font-bold text-gray-800 text-base flex items-center gap-2">
+                    <span class="w-1.5 h-5 bg-gray-400 rounded-full"></span>ویرایش پرتفوی
+                </h3>
+                <button onclick="closeEditModal()" class="text-gray-400 hover:text-red-500">✕</button>
+            </div>
+            
+            <form method="POST" id="editForm" class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-5">
+                    <!-- Row 1 -->
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">نام پرتفوی</label>
+                        <input type="text" name="name" id="editName" required class="w-full p-2.5 border border-gray-200 rounded-lg text-sm focus:border-gray-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">کد ملی</label>
+                        <input type="text" name="national_id" id="editNationalId" class="w-full p-2.5 border border-gray-200 rounded-lg text-sm focus:border-gray-500 outline-none dir-ltr">
+                    </div>
+                    
+                    <!-- Row 2 -->
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">مدیر</label>
+                        <div class="custom-select-container">
+                            <button type="button" class="select-trigger" onclick="toggleSelect(this)">
+                                <span class="selected-text" id="editManagerDisplay"></span>
+                                <svg class="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M19 9l-7 7-7-7"/></svg>
+                            </button>
+                            <div class="select-options">
+                                {% for m in managers %}<div class="select-option" onclick="selectOption(this, 'editManagerInput', '{{ m.full_name }}')">{{ m.full_name }}</div>{% endfor %}
+                            </div>
+                            <input type="hidden" name="manager" id="editManagerInput">
+                        </div>
+                    </div>
+                    <!-- NEW RISK LEVEL FIELD -->
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">سطح ریسک</label>
+                        <div class="custom-select-container">
+                            <button type="button" class="select-trigger" onclick="toggleSelect(this)">
+                                <span class="selected-text" id="editRiskDisplay"></span>
+                                <svg class="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M19 9l-7 7-7-7"/></svg>
+                            </button>
+                            <div class="select-options">
+                                <div class="select-option" onclick="selectOption(this, 'editRiskInput', 'Low')">کم‌ریسک</div>
+                                <div class="select-option" onclick="selectOption(this, 'editRiskInput', 'Medium')">متعادل</div>
+                                <div class="select-option" onclick="selectOption(this, 'editRiskInput', 'High')">پرریسک</div>
+                            </div>
+                            <input type="hidden" name="risk_level" id="editRiskInput">
+                        </div>
+                    </div>
+
+                    <!-- Row 3 -->
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">کارگزاری</label>
+                        <input type="text" name="broker" id="editBroker" class="w-full p-2.5 border border-gray-200 rounded-lg text-sm focus:border-gray-500 outline-none">
+                    </div>
+                    <div class="relative">
+                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">تاریخ شروع</label>
+                        <input type="text" id="editDateDisplay" readonly class="w-full p-2.5 border border-gray-200 rounded-lg text-sm text-center font-bold text-gray-700 cursor-pointer outline-none" onclick="toggleDatepicker('datepicker-edit')">
+                        <input type="hidden" name="delivery_date" id="editDateInput">
+                        <div id="datepicker-edit" class="hidden absolute bottom-full mb-2 left-0 bg-white rounded-xl shadow-xl border border-gray-100 p-3 w-full z-50 datepicker-dropdown">
+                            <!-- Datepicker content -->
+                        </div>
+                    </div>
+                <!-- Row 4 -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">سرمایه اولیه</label>
+                    <input type="text" name="capital" id="editCapital" required class="w-full p-2.5 border border-gray-200 rounded-lg text-sm money-input font-bold text-gray-800 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">شاخص کل (مبدأ)</label>
+                    <input type="text" name="initial_index" id="editIndex" class="w-full p-2.5 border border-gray-200 rounded-lg text-sm money-input font-bold text-gray-800 outline-none">
+                </div>
+                    
+                <!-- Row 5 -->
+                <div class="col-span-2">
+                    <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">توضیحات</label>
+                    <input type="text" name="description" id="editDesc" class="w-full p-2.5 border border-gray-200 rounded-lg text-sm outline-none">
+                </div>
+            </div>
+            <div class="flex justify-end pt-6 mt-4 border-t border-gray-100">
+                <button type="submit" class="bg-slate-800 text-white px-6 py-2.5 rounded-lg font-bold hover:bg-slate-700 transition shadow-md text-xs">ذخیره تغییرات</button>
+            </div>
+        </form>
+    </div>
+</div>
+<div id="fixed-status-bar" class="fixed bottom-0 left-0 right-0 bg-slate-200 z-50">
+    <div class="max-w-8xl mx-auto px-6   py-1.5 flex justify-end items-center text-sm">
+        <div class="flex items-center gap-3">
+            <div>
+                <span class="font-medium text-[12px] text-slate-400">تعداد کل پرتفوی‌ها: </span>
+                <span class="font-bold text-[14px] text-slate-400 mr-1" id="total-portfolios">0</span>
+            </div>
+            <div>
+                <span class="font-medium text-[12px] text-slate-400">ارزش کل دارایی (AUM):</span>
+                <span class="font-bold text-[14px] text-slate-400 mr-1" id="total-value">0</span>
+                <span class="text-xs text-slate-400 mr-1">ریال</span>
+            </div>
+        </div>
+        <span class="text-[12px] text-slate-400 mr-6">Portfolio Managment System KINko App</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jalaali-js/dist/jalaali.js"></script>
+
+<script>
+    const marketSymbols = [
+        {% for item in market_data %}
+        { symbol: "{{ item.symbol }}", name: "{{ item.company_name }}", type: "{{ item.asset_type }}", market: "{{ item.market_type }}", price: {{ item.last_price if item.last_price else 0 }} },
+        {% endfor %}
+    ];
+    const marketData = {}; marketSymbols.forEach(m => marketData[m.symbol] = m.price);
+
+    // --- Index & Calendar ---
+    function fetchIndexData(gregorianDate) {
+        const indexInput = document.getElementById('initialIndexInput');
+        const loading = document.getElementById('indexLoading');
+        const successMsg = document.getElementById('indexSuccessMsg');
+        if(indexInput && loading) {
+            indexInput.value = ""; indexInput.placeholder = "در حال دریافت..."; indexInput.disabled = true;
+            loading.classList.remove('hidden'); if(successMsg) successMsg.classList.add('hidden');
+            fetch(`/api/get-index-by-date?date=${gregorianDate}`)
+                .then(r => r.json())
+                .then(d => {
+                    loading.classList.add('hidden'); indexInput.disabled = false;
+                    if(d.success) { indexInput.value = parseInt(d.index).toLocaleString('en-US'); indexInput.classList.add('bg-green-50'); if(successMsg) successMsg.classList.remove('hidden'); }
+                    else { indexInput.placeholder = "یافت نشد (دستی)"; }
+                }).catch(() => { loading.classList.add('hidden'); indexInput.disabled = false; });
+        }
+    }
+    function onDateSelected(containerId, dateString) { if(containerId === 'calendarDays') { checkDateModeForRows(); fetchIndexData(dateString); } }
+
+    let currentJYear, currentJMonth; let currentEditYear, currentEditMonth;
+    function initDatepicker() { const now = new Date(); const jNow = jalaali.toJalaali(now); currentJYear = jNow.jy; currentJMonth = jNow.jm; currentEditYear = jNow.jy; currentEditMonth = jNow.jm; renderCalendar('calendarDays', currentJYear, currentJMonth, 'dateDisplay', 'dateInput', 'datepicker-create', 'currentMonthLabel'); }
+    function changeMonth(offset) { currentJMonth += offset; if(currentJMonth>12){currentJMonth=1; currentJYear++} else if(currentJMonth<1){currentJMonth=12; currentJYear--} renderCalendar('calendarDays', currentJYear, currentJMonth, 'dateDisplay', 'dateInput', 'datepicker-create', 'currentMonthLabel'); }
+    function changeEditMonth(offset) { currentEditMonth += offset; if(currentEditMonth>12){currentEditMonth=1; currentEditYear++} else if(currentEditMonth<1){currentEditMonth=12; currentEditYear--} renderCalendar('editCalendarDays', currentEditYear, currentEditMonth, 'editDateDisplay', 'editDateInput', 'datepicker-edit', 'editMonthLabel'); }
+
+    // --- Dynamic Rows ---
+    function addStockRow(data = null) {
+        const tbody = document.getElementById('stocksBody'); 
+        const row = document.createElement('tr'); 
+        row.className = "hover:bg-slate-50 transition group relative";
+        const uniqueId = 'stock-sym-' + Date.now() + Math.floor(Math.random() * 1000);
+        
+        const initialSym = data ? data.symbol : '';
+        const initialQty = data ? formatLargeNumber(data.qty) : '';
+        const initialPrice = data ? formatLargeNumber(data.price) : '';
+
+        row.innerHTML = `
+            <td class="p-2 relative w-[30%]"><div class="autocomplete-wrapper relative"><input type="text" class="ghost-input font-bold text-gray-700 w-full" id="${uniqueId}" placeholder="جستجوی نماد" autocomplete="off" value="${initialSym}"><input type="hidden" name="stock_symbol[]" class="real-symbol" value="${initialSym}"></div></td>
+            <td class="p-2 w-[20%]"><input type="text" name="stock_qty[]" class="ghost-input money-input" placeholder="0" oninput="updateRowTotal(this)" value="${initialQty}"></td>
+            <td class="p-2 w-[20%]"><input type="text" name="stock_price[]" class="ghost-input money-input" placeholder="قیمت روز" ${initialPrice ? '' : 'readonly'} tabindex="-1" value="${initialPrice}"></td>
+            <td class="p-2 w-[20%]"><input type="text" class="ghost-input border-none text-[#1E293B] row-total" placeholder="0" readonly tabindex="-1" value="0"></td>
+            <td class="p-2 w-[10%] text-center"><button type="button" onclick="removeRow(this)" class="w-6 h-6 rounded-full bg-slate-100 text-slate-400 hover:bg-custom-red hover:text-white transition flex items-center justify-center shadow-sm">✕</button></td>
+        `;
+        tbody.appendChild(row);
+        
+        if(data) updateRowTotal(row.querySelector('input[name="stock_qty[]"]'));
+
+        initGlobalAutocomplete(uniqueId, marketSymbols, function(selectedItem) {
+            row.querySelector('.real-symbol').value = selectedItem.symbol;
+            updatePrice(row, selectedItem.symbol);
+        });
+    }
+
+    function removeRow(btn) { btn.closest('tr').remove(); updateTotalCapital(); }
+    
+    function updatePrice(row, symbol) { 
+        const priceInput = row.querySelector('input[name="stock_price[]"]');
+        const dateInput = document.getElementById('dateInput').value;
+        const today = new Date().toISOString().split('T')[0];
+        if (dateInput && dateInput < today) {
+            priceInput.readOnly = false; priceInput.classList.remove('text-gray-500'); priceInput.classList.add('text-blue-600'); priceInput.value = ""; priceInput.placeholder = "دستی"; priceInput.focus();
+        } else {
+            if(marketData[symbol]) { priceInput.value = parseInt(marketData[symbol]).toLocaleString('en-US'); updateRowTotal(priceInput); }
+            priceInput.readOnly = true;
+        }
+    }
+    
+    function checkDateModeForRows() { document.querySelectorAll('#stocksBody tr').forEach(row => { const sym = row.querySelector('.real-symbol').value; if(sym) updatePrice(row, sym); }); }
+    function updateRowTotal(input) { const r = input.closest('tr'); const q = cleanNumber(r.querySelector('input[name="stock_qty[]"]').value); const p = cleanNumber(r.querySelector('input[name="stock_price[]"]').value); r.querySelector('.row-total').value = formatLargeNumber(q*p); updateTotalCapital(); }
+    function updateTotalCapital() { let s = 0; document.querySelectorAll('.row-total').forEach(el => s += cleanNumber(el.value)); document.getElementById('stocksSumDisplay').innerText = formatLargeNumber(s); let c = cleanNumber(document.getElementById('cashInput').value); document.getElementById('totalDisplay').innerHTML = formatLargeNumber(s+c) + ' <span class="text-sm font-normal text-gray-400">ریال</span>'; document.getElementById('cashDisplay').innerText = formatLargeNumber(c); }
+
+    // --- Excel Logic ---
+    function handleExcelUpload(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const label = document.getElementById('uploadLabel');
+        const loading = document.getElementById('uploadLoading');
+        label.classList.add('hidden'); loading.classList.remove('hidden');
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet, {header: 1});
+
+                if (jsonData.length < 2) { alert("فایل خالی است."); return; }
+                const headers = jsonData[0].map(h => normalizePersian(String(h).trim()));
+                const map = findColumns(headers);
+
+                if (map.symbol === -1 || map.qty === -1) { alert("ستون‌های 'نماد' و 'تعداد' پیدا نشد."); return; }
+
+                for (let i = 1; i < jsonData.length; i++) {
+                    const row = jsonData[i];
+                    if (!row[map.symbol]) continue;
+                    let sym = normalizePersian(String(row[map.symbol])).trim();
+                    if (sym.match(/[0-9]$/)) sym = sym.replace(/[0-9]+$/, ''); 
+                    const qty = parseFloat(String(row[map.qty]).replace(/,/g, '')) || 0;
+                    let price = 0;
+                    if (map.price !== -1) price = parseFloat(String(row[map.price]).replace(/,/g, '')) || 0;
+                    if (qty > 0) addStockRow({ symbol: sym, qty: qty, price: price });
+                }
+            } catch (err) { console.error(err); alert("خطا در خواندن فایل."); } 
+            finally { loading.classList.add('hidden'); label.classList.remove('hidden'); input.value = ''; }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function findColumns(headers) {
+        const map = { symbol: -1, qty: -1, price: -1 };
+        headers.forEach((h, index) => {
+            const head = h.toLowerCase();
+            if (head.includes('نماد') || head.includes('symbol')) map.symbol = index;
+            else if (head.includes('تعداد') || head.includes('qty')) map.qty = index;
+            else if ((head.includes('قیمت') || head.includes('price')) && !head.includes('ارزش')) { if (map.price === -1 || head.includes('پایانی')) map.price = index; }
+        });
+        return map;
+    }
+
+    // --- Form Wizard ---
+    function openCreateModal() { document.getElementById('createModal').classList.remove('hidden'); resetWizard(); initDatepicker(); if(document.getElementById('stocksBody').children.length===0) addStockRow(); }
+    function closeCreateModal() { document.getElementById('createModal').classList.add('hidden'); }
+    function resetWizard() { document.getElementById('step1').classList.remove('hidden', 'opacity-0'); document.getElementById('step2').classList.add('hidden', 'opacity-0'); document.getElementById('step1-indicator').classList.replace('bg-gray-300', 'bg-[#5E2BFF]'); document.getElementById('step2-indicator').classList.replace('bg-[#5E2BFF]', 'bg-gray-300'); document.getElementById('nextBtn').classList.remove('hidden'); document.getElementById('prevBtn').classList.add('hidden'); document.getElementById('submitBtn').classList.add('hidden'); document.getElementById('cancelBtn').classList.remove('hidden'); document.getElementById('stocksBody').innerHTML = ''; }
+    function validateStep1() { let v=true; document.querySelectorAll('#step1 .required-field').forEach(i=>{ if(!i.value.trim()){ i.classList.add('input-error'); v=false; }}); return v; }
+    function validateStep2() { const c=document.getElementById('cashInput'); if(!c.value.trim()){ c.classList.add('input-error'); return false; } return true; }
+    function nextStep() { document.getElementById('step1').classList.add('opacity-0'); setTimeout(()=>{document.getElementById('step1').classList.add('hidden');document.getElementById('step2').classList.remove('hidden');setTimeout(()=>document.getElementById('step2').classList.remove('opacity-0'),10)},300); document.getElementById('step2-indicator').classList.replace('bg-gray-300','bg-[#5E2BFF]'); document.getElementById('nextBtn').classList.add('hidden'); document.getElementById('prevBtn').classList.remove('hidden'); document.getElementById('submitBtn').classList.remove('hidden'); document.getElementById('cancelBtn').classList.add('hidden'); updateTotalCapital(); }
+    function prevStep() { document.getElementById('step2').classList.add('opacity-0'); setTimeout(()=>{document.getElementById('step2').classList.add('hidden');document.getElementById('step1').classList.remove('hidden');setTimeout(()=>document.getElementById('step1').classList.remove('opacity-0'),10)},300); document.getElementById('step2-indicator').classList.replace('bg-[#5E2BFF]','bg-gray-300'); document.getElementById('nextBtn').classList.remove('hidden'); document.getElementById('prevBtn').classList.add('hidden'); document.getElementById('submitBtn').classList.add('hidden'); document.getElementById('cancelBtn').classList.remove('hidden'); }
+    function prepareStocksData() { const rows = document.querySelectorAll('#stocksBody tr'); const stocks = []; rows.forEach(row => { const s = row.querySelector('.real-symbol').value; const q = row.querySelector('input[name="stock_qty[]"]').value; const p = row.querySelector('input[name="stock_price[]"]').value; if(s && q) stocks.push({symbol:s, qty:q, price:p}); }); document.getElementById('stocksJsonInput').value = JSON.stringify(stocks); }
+    function submitForm() { if(validateStep2()) { prepareStocksData(); document.getElementById('addPortfolioForm').submit(); } }
+
+
+    function openEditModalFromData(btn) {
+        document.getElementById('editModal').classList.remove('hidden');
+        document.getElementById('editForm').action = `/portfolios/edit/${btn.dataset.id}`;
+
+        // پر کردن فیلدها
+        document.getElementById('editName').value = btn.dataset.name;
+        document.getElementById('editBroker').value = btn.dataset.broker;
+        document.getElementById('editNationalId').value = btn.dataset.nationalId; // اصلاح شد: خواندن camelCase
+        document.getElementById('editCapital').value = formatLargeNumber(btn.dataset.capital);
+        document.getElementById('editDesc').value = btn.dataset.desc;
+        document.getElementById('editIndex').value = btn.dataset.index ? formatLargeNumber(btn.dataset.index) : '';
+        document.getElementById('editDateInput').value = btn.dataset.date;
+        document.getElementById('editRiskLevel').value = btn.dataset.riskLevel;        
+        
+        // Set manager value and display text
+        const manager = btn.dataset.manager;
+        document.getElementById('editManagerInput').value = manager;
+        document.getElementById('editManagerDisplay').innerText = manager;
+
+        // --- NEW LOGIC FOR CUSTOM RISK DROPDOWN ---
+        const riskLevel = btn.dataset.riskLevel;
+        const riskDisplay = document.getElementById('editRiskDisplay');
+        const riskInput = document.getElementById('editRiskInput');
+
+        riskInput.value = riskLevel
+        
+        // Set display text based on the value
+        const riskTextMap = {
+            'Low': 'کم‌ریسک',
+            'Medium': 'متعادل',
+            'High': 'پرریسک'
+        };
+        riskDisplay.innerText = riskTextMap[riskLevel] || 'متعادل';
+        // --- END NEW LOGIC --
+
+        // تقویم
+        const date = btn.dataset.date;
+        const jDate = (date && date !== 'None') ? jalaali.toJalaali(new Date(date)) : jalaali.toJalaali(new Date());
+        currentEditYear = jDate.jy;
+        currentEditMonth = jDate.jm;
+        if (date && date !== 'None') {
+            document.getElementById('editDateDisplay').value = toPersianNum(`${jDate.jy}/${String(jDate.jm).padStart(2,'0')}/${String(jDate.jd).padStart(2,'0')}`);
+        }
+        renderCalendar('editCalendarDays', currentEditYear, currentEditMonth, 'editDateDisplay', 'editDateInput', 'datepicker-edit', 'editMonthLabel');
+    }
+
+    function closeEditModal() { document.getElementById('editModal').classList.add('hidden'); }
+    function confirmDeletePortfolio(id, name) { if(confirm(`حذف پرتفوی ${name}؟`)) window.location.href = `/portfolios/delete/${id}`; }
+
+    initDatepicker();
+
+    // --- Search Functionality ---
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('portfolioSearchInput');
+        const tableBody = document.querySelector('tbody');
+
+        if (!tableBody) {
+            console.error("Search failed: Table body not found.");
+            return;
+        }
+
+        const tableRows = Array.from(tableBody.querySelectorAll('tr'));
+
+        if (tableRows.length === 0 || (tableRows.length === 1 && !tableRows[0].hasAttribute('data-national-id'))) {
+            searchInput.disabled = true;
+            searchInput.placeholder = 'جدول خالی است.';
+            return;
+        }
+
+        searchInput.addEventListener('input', function() {
+            const query = searchInput.value.trim();
+
+            tableRows.forEach(row => {
+                // If the query is empty, show all rows.
+                if (query === '') {
+                    row.style.display = '';
+                    return;
+                }
+
+                // Read the national ID directly from the data attribute.
+                const nationalId = row.dataset.nationalId || '';
+                let isMatch = false;
+
+                // Check if the national ID contains the search query.
+                if (nationalId.includes(query)) {
+                    isMatch = true;
+                }
+                
+                // Set the row's display style based on the match.
+                row.style.display = isMatch ? '' : 'none';
+            });
+        });
+    });
+
+    // --- Status Bar Calculation ---
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const rows = document.querySelectorAll('tbody tr');
+        let totalPortfolios = 0;
+        let totalValue = 0;
+
+        rows.forEach(row => {
+            // Check if the row contains portfolio data (not the "empty" message)
+            if (row.cells.length > 1) {
+                totalPortfolios++;
+                const valueCell = row.cells[7]; // 8th column is current value
+                if (valueCell) {
+                    const valueText = valueCell.textContent.replace(/[۰-۹]/g, d => "۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/[^0-9]/g, '');
+                    totalValue += parseFloat(valueText) || 0;
+                }
+            }
+        });
+
+        // Update the status bar
+        document.getElementById('total-portfolios').textContent = toPersianNum(totalPortfolios);
+        document.getElementById('total-value').textContent = toPersianNum(totalValue.toLocaleString('en-US'));
+
+        function toPersianNum(num) {
+            return String(num).replace(/\d/g, d => "۰۱۲۳۴۵۶۷۸۹"[d]);
+        }
+    });
+
+
+    function openDeletePortfolioModal(id, name) {
+    // Construct the URL for the delete action
+    const deleteUrl = `/portfolios/delete/${id}`;
+    
+    // Define the title and message for the custom modal
+    const modalTitle = `حذف پرتفوی`;
+    const modalMessage = `آیا از حذف پرتفوی «${name}» اطمینان دارید؟ این عملیات غیرقابل بازگشت است.`;
+
+    // Call the global function to open the system's confirmation modal
+    // This function is assumed to be defined in a global scope (e.g., base.html)
+    if (typeof openConfirmModal === 'function') {
+        openConfirmModal(deleteUrl, modalTitle, modalMessage);
+    } else {
+        // Fallback to the old method if the global function isn't available
+        console.error("Custom modal function 'openConfirmModal' not found. Using browser default.");
+        if (confirm(modalMessage)) {
+            window.location.href = deleteUrl;
+        }
+    }
+}
+
+</script>
+{% endblock %}
